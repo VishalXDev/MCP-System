@@ -3,7 +3,7 @@ import { auth, db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { getUserRole } from "../firebase/roleUtils";
 import AdminControls from "../components/AdminControls";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, User } from "firebase/auth";
 
 const Settings = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -11,51 +11,54 @@ const Settings = () => {
   const [role, setRole] = useState<string>("staff");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState(auth.currentUser);
+  const [user, setUser] = useState<User | null>(null);
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        await fetchSettings(currentUser.uid);
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+  const fetchSettings = async (userId: string) => {
+    try {
+      const userRef = doc(db, "users", userId);
+      const docSnap = await getDoc(userRef);
 
-    const fetchSettings = async () => {
-      try {
-        const userRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setTheme(data.preferences?.theme || "light");
-          setNotifications(data.preferences?.notifications ?? true);
-          setRole(await getUserRole(user.uid));
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setTheme(data.preferences?.theme || "light");
+        setNotifications(data.preferences?.notifications ?? true);
+        try {
+          const userRole = await getUserRole(userId);
+          setRole(userRole);
+        } catch {
+          setRole("staff"); // Default to "staff" if role fetching fails
         }
-      } catch (err) {
-        setError("Failed to load settings. Please try again.");
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchSettings();
-  }, [user]);
+    } catch {
+      setError("Failed to load settings. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const saveSettings = async () => {
     if (!user) return;
+    setSaveStatus(null);
     try {
       const userRef = doc(db, "users", user.uid);
       await setDoc(userRef, { preferences: { theme, notifications } }, { merge: true });
-      alert("Settings saved successfully!");
+      setSaveStatus("Settings saved successfully!");
     } catch {
-      alert("Failed to save settings. Please try again.");
+      setSaveStatus("Failed to save settings. Please try again.");
     }
   };
 
@@ -94,6 +97,12 @@ const Settings = () => {
       >
         Save Settings
       </button>
+
+      {saveStatus && (
+        <p className={`mt-2 text-center font-semibold ${saveStatus.includes("Failed") ? "text-red-400" : "text-green-400"}`}>
+          {saveStatus}
+        </p>
+      )}
 
       {role === "admin" && <AdminControls />}
     </div>

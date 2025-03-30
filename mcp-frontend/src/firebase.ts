@@ -1,6 +1,10 @@
+// Ensure this file exports the required Firebase services
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage"; // Import Firebase Storage
 
+// Your Firebase configuration
 const firebaseConfig = {
     apiKey: "AIzaSyCiBVimycNraGK_P3jAPsoYSOQ6Wnj_yV4",
     authDomain: "mcp-system-81684.firebaseapp.com",
@@ -11,7 +15,10 @@ const firebaseConfig = {
     measurementId: "G-Z93MJFMEXV"  
 };
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app); // Initialize Firebase Storage
 
-export { messaging, getToken, onMessage };
+export { db, auth, storage };

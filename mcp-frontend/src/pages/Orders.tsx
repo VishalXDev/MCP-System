@@ -1,114 +1,199 @@
-import { useState, useEffect } from "react";
-import { db } from "../firebase/authUtils"; // Firestore Import
-import { collection, getDocs } from "firebase/firestore";
+import React, { useState, useEffect, createContext } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { FaHome, FaClipboardList, FaWallet, FaCog, FaSignOutAlt, FaUser } from "react-icons/fa";
+import { auth } from "../firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 interface Order {
   id: string;
   customer: string;
   status: string;
-  total?: number;
-  deliveryPartner?: string;
+  total: string;
+  location: string;
 }
 
-const Orders = () => {
+interface User {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+}
+
+const AuthContext = createContext<{ user: User | null } | null>(null);
+
+const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [loading, setLoading] = useState<boolean>(true);
+  const ordersPerPage = 5;
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "orders"));
-        const orderList = querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Order));
-        setOrders(orderList);
-      } catch (err) {
-        setError("Failed to fetch orders");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrders();
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser ? { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName } : null);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    try {
-      // Firestore update logic (if needed)
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update order status:", error);
-    }
+  useEffect(() => {
+    setLoading(true);
+    fetch("/api/orders")
+      .then((res) => res.json())
+      .then((data: Order[]) => {
+        setOrders(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error fetching orders:", error);
+        setLoading(false);
+      });
+  }, []);
+
+  const handleCancelOrder = (orderId: string) => {
+    setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
   };
 
-  const deleteOrder = async (orderId: string) => {
-    try {
-      // Firestore delete logic (if needed)
-      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
-    } catch (error) {
-      console.error("Failed to delete order:", error);
-    }
+  const handleStatusChange = (orderId: string, newStatus: string) => {
+    setOrders((prevOrders) =>
+      prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
+    );
   };
 
-  if (loading) return <p className="text-center text-white">Loading orders...</p>;
-  if (error) return <p className="text-center text-red-500">{error}</p>;
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/login");
+  };
+
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   return (
-    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-4">Orders</h2>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-700">
-          <thead>
-            <tr className="bg-gray-900 text-white">
-              <th className="p-3 border border-gray-700">Customer</th>
-              <th className="p-3 border border-gray-700">Status</th>
-              <th className="p-3 border border-gray-700">Total</th>
-              <th className="p-3 border border-gray-700">Delivery Partner</th>
-              <th className="p-3 border border-gray-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="p-3 text-center text-gray-400">
-                  No orders available
-                </td>
-              </tr>
+    <AuthContext.Provider value={{ user }}>
+      <div className="p-6 animate-fadeIn max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-gray-800 text-center sm:text-left">Orders</h1>
+
+        <div className="flex">
+          {/* Sidebar */}
+          <aside className="w-64 bg-gray-800 text-white h-screen p-5 hidden sm:block">
+            <ul>
+              {[
+                { name: "Dashboard", path: "/dashboard", icon: <FaHome /> },
+                { name: "Orders", path: "/orders", icon: <FaClipboardList /> },
+                { name: "Wallet", path: "/wallet", icon: <FaWallet /> },
+                { name: "Settings", path: "/settings", icon: <FaCog /> },
+              ].map((item) => (
+                <li
+                  key={item.name}
+                  className={`mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer transition-all ${
+                    location.pathname === item.path ? "bg-gray-700" : "hover:bg-gray-700"
+                  }`}
+                  onClick={() => navigate(item.path)}
+                >
+                  {item.icon}
+                  <span>{item.name}</span>
+                </li>
+              ))}
+              {user ? (
+                <li
+                  className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-red-600"
+                  onClick={handleLogout}
+                >
+                  <FaSignOutAlt />
+                  <span>Logout</span>
+                </li>
+              ) : (
+                <>
+                  <li
+                    className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-blue-600"
+                    onClick={() => navigate("/login")}
+                  >
+                    <FaUser />
+                    <span>Login</span>
+                  </li>
+                  <li
+                    className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-green-600"
+                    onClick={() => navigate("/signup")}
+                  >
+                    <FaUser />
+                    <span>Signup</span>
+                  </li>
+                </>
+              )}
+            </ul>
+          </aside>
+
+          {/* Main Content */}
+          <div className="overflow-x-auto bg-white shadow-lg rounded-2xl p-4 flex-1">
+            {loading ? (
+              <p className="text-center text-gray-600">Loading orders...</p>
             ) : (
-              orders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-700">
-                  <td className="p-3 border border-gray-700">{order.customer}</td>
-                  <td className="p-3 border border-gray-700">
-                    <select
-                      value={order.status}
-                      onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                      className="bg-gray-700 p-1 rounded"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Delivered">Delivered</option>
-                    </select>
-                  </td>
-                  <td className="p-3 border border-gray-700">₹{order.total || 0}</td>
-                  <td className="p-3 border border-gray-700">{order.deliveryPartner || "N/A"}</td>
-                  <td className="p-3 border border-gray-700">
+              <>
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                      <th className="py-4 px-6 text-left">Order ID</th>
+                      <th className="py-4 px-6 text-left">Customer</th>
+                      <th className="py-4 px-6 text-center">Status</th>
+                      <th className="py-4 px-6 text-center">Total</th>
+                      <th className="py-4 px-6 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-gray-600 text-sm font-light">
+                    {currentOrders.map((order) => (
+                      <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-100 transition-all duration-300">
+                        <td className="py-4 px-6 text-left font-medium">{order.id}</td>
+                        <td className="py-4 px-6 text-left">{order.customer}</td>
+                        <td className="py-4 px-6 text-center">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                          </select>
+                        </td>
+                        <td className="py-4 px-6 text-center font-semibold">{order.total}</td>
+                        <td className="py-4 px-6 text-center flex justify-center space-x-2">
+                          <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all shadow-md hover:shadow-lg">
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleCancelOrder(order.id)}
+                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+                          >
+                            Cancel
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                <div className="flex justify-center mt-4">
+                  {Array.from({ length: totalPages }, (_, index) => (
                     <button
-                      onClick={() => deleteOrder(order.id)}
-                      className="bg-red-500 px-2 py-1 rounded"
+                      key={index}
+                      onClick={() => setCurrentPage(index + 1)}
+                      className={`px-4 py-2 mx-1 rounded-lg ${
+                        currentPage === index + 1 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
+                      }`}
                     >
-                      Delete
+                      {index + 1}
                     </button>
-                  </td>
-                </tr>
-              ))
+                  ))}
+                </div>
+              </>
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
-    </div>
+    </AuthContext.Provider>
   );
 };
 

@@ -9,6 +9,7 @@ const Settings = () => {
   const [name, setName] = useState("");
   const [profilePic, setProfilePic] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null); // Error state for UI feedback
 
   const user = auth.currentUser;
 
@@ -16,15 +17,22 @@ const Settings = () => {
   useEffect(() => {
     if (user) {
       const fetchSettings = async () => {
-        const userRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(userRef);
+        try {
+          const userRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(userRef);
 
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setName(data.name || "");
-          setProfilePic(data.profilePic || "");
-          setTheme(data.preferences?.theme || "light");
-          setNotifications(data.preferences?.notifications ?? true);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setName(data.name || "");
+            setProfilePic(data.profilePic || "");
+            setTheme(data.preferences?.theme || "light");
+            setNotifications(data.preferences?.notifications ?? true);
+          }
+        } catch (error) {
+          if (error instanceof Error) {
+            console.error("Error fetching user settings:", error.message);
+            setError("Failed to load settings. Please try again.");
+          }
         }
       };
       fetchSettings();
@@ -40,36 +48,53 @@ const Settings = () => {
 
   // Upload profile picture
   const uploadProfilePic = async () => {
-    if (!user || !file) return;
+    if (!user || !file) return null;
 
-    const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
-
-    setProfilePic(downloadURL);
-    return downloadURL;
+    try {
+      const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+      await uploadBytes(storageRef, file);
+      return await getDownloadURL(storageRef);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error uploading profile picture:", error.message);
+        setError("Failed to upload profile picture.");
+      }
+      return null;
+    }
   };
 
   // Save user settings & profile update
   const saveSettings = async () => {
     if (!user) return;
 
-    let imageUrl = profilePic;
-    if (file) imageUrl = await uploadProfilePic(); // Upload only if a new file is selected
+    try {
+      let imageUrl = profilePic;
+      if (file) {
+        const uploadedUrl = await uploadProfilePic();
+        if (uploadedUrl) imageUrl = uploadedUrl;
+      }
 
-    const userRef = doc(db, "users", user.uid);
-    await setDoc(userRef, { 
-      name, 
-      profilePic: imageUrl, 
-      preferences: { theme, notifications } 
-    }, { merge: true });
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, { 
+        name, 
+        profilePic: imageUrl, 
+        preferences: { theme, notifications } 
+      }, { merge: true });
 
-    alert("Settings saved!");
+      alert("Settings saved!");
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Error saving settings:", error.message);
+        setError("Failed to save settings. Please try again.");
+      }
+    }
   };
 
   return (
     <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md">
       <h2 className="text-lg font-bold mb-4">User Settings</h2>
+
+      {error && <p className="text-red-500">{error}</p>}
 
       {/* Profile Picture Upload */}
       <div className="mb-4">

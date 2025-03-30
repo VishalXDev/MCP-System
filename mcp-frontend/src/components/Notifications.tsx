@@ -1,66 +1,49 @@
-import { useEffect, useState } from "react";
-import { messaging, getToken, onMessage } from "../firebase"; // Ensure correct Firebase imports
+import React, { useState, useEffect } from "react";
 
-interface Notification {
-  id: string;
-  title: string;
-  body: string;
+interface NotificationProps {
+  id: number;
+  message: string;
+  type: "success" | "error";
+  onClose: (id: number) => void;
 }
 
-const Notifications = () => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-
+const NotificationItem: React.FC<NotificationProps> = ({ id, message, type, onClose }) => {
   useEffect(() => {
-    // Request permission for notifications
-    Notification.requestPermission().then((permission) => {
-      if (permission === "granted") {
-        console.log("Notification permission granted.");
-
-        // Get Firebase Messaging Token
-        getToken(messaging, {
-          vapidKey:
-            "BCdqdIaMv0Lji3_ZgURU_gKBJ63UKmIxarnPjHwLcKEwC24N9RpmJ93HeCB0Ax-W18iBfcYEiX4NFRcRsyCwsak",
-        })
-          .then((currentToken) => {
-            if (currentToken) {
-              console.log("FCM Token:", currentToken);
-              // Send this token to your backend to register for notifications
-            } else {
-              console.log("No registration token available.");
-            }
-          })
-          .catch((err) => console.log("Error getting token:", err));
-      }
-    });
-
-    // Listen for incoming notifications
-    onMessage(messaging, (payload) => {
-      console.log("Message received: ", payload);
-
-      const newNotification: Notification = {
-        id: payload.messageId || Date.now().toString(),
-        title: payload.notification?.title || "New Notification",
-        body: payload.notification?.body || "",
-      };
-
-      setNotifications((prev) => [newNotification, ...prev]);
-    });
-  }, []);
+    const timer = setTimeout(() => onClose(id), 3000);
+    return () => clearTimeout(timer);
+  }, [id, onClose]);
 
   return (
-    <div className="p-4 bg-gray-800 text-white rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-2">Notifications</h2>
-      <ul>
-        {notifications.length === 0 ? (
-          <li className="text-gray-400">No new notifications</li>
-        ) : (
-          notifications.map((notification) => (
-            <li key={notification.id} className="p-2 border-b border-gray-700">
-              <strong>{notification.title}</strong>: {notification.body}
-            </li>
-          ))
-        )}
-      </ul>
+    <div
+      className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-all duration-300 ${
+        type === "success" ? "bg-green-500" : "bg-red-500"
+      }`}
+    >
+      {message}
+      <button className="ml-4 text-white font-bold" onClick={() => onClose(id)}>
+        ✖
+      </button>
+    </div>
+  );
+};
+
+const Notifications = () => {
+  const [notifications, setNotifications] = useState<
+    { id: number; message: string; type: "success" | "error" }[]
+  >([
+    { id: 1, message: "Order #12345 has been shipped!", type: "success" },
+    { id: 2, message: "Payment failed for Order #12346", type: "error" },
+  ]);
+
+  const removeNotification = (id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  return (
+    <div className="fixed top-5 right-5 z-50 flex flex-col gap-2">
+      {notifications.map((notif) => (
+        <NotificationItem key={notif.id} {...notif} onClose={removeNotification} />
+      ))}
     </div>
   );
 };
