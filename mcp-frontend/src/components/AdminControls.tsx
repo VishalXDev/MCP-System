@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import { updateUserRole } from "../firebase/roleUtils";
 
 const AdminControls = () => {
   const [userId, setUserId] = useState("");
   const [newRole, setNewRole] = useState("staff");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // Initialize navigation
 
   const handleUpdateRole = async () => {
     if (!userId) {
@@ -17,6 +19,9 @@ const AdminControls = () => {
       await updateUserRole(userId, newRole);
       alert("User role updated successfully!");
       setUserId(""); // Clear input after update
+      
+      // Redirect to the dashboard
+      navigate("/dashboard");
     } catch (error) {
       console.error("Error updating user role:", error);
       alert("Failed to update user role. Please try again.");
@@ -49,7 +54,7 @@ const AdminControls = () => {
 
       <button
         onClick={handleUpdateRole}
-        className={`bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded ${
+        className={`bg-red-500 hover:bg-red-700 text-black py-2 px-4 rounded ${
           loading || !userId ? "opacity-50 cursor-not-allowed" : ""
         }`}
         disabled={loading || !userId}
