@@ -35,5 +35,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 });
+const acceptOrder = async (orderId) => {
+  try {
+      await axios.post(`${API_URL}/orders/${orderId}/accept`);
+      alert("Order accepted successfully!");
+  } catch (error) {
+      alert("Error accepting order: " + error.message);
+  }
+};
 
 export default OrderScreen;

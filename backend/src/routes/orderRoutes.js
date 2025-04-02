@@ -21,6 +21,14 @@ router.get("/:orderId", protect, getOrderDetails);
 
 // Route to track an order
 router.get("/track/:orderId", protect, trackOrder);
+router.get("/", async (req, res) => {
+  try {
+    const orders = await Order.find();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: "Server Error: " + error.message });
+  }
+});
 
 // Route to update order location
 router.put("/updateLocation/:orderId", async (req, res) => {
@@ -56,7 +64,18 @@ router.put("/updateLocation/:orderId", async (req, res) => {
 
     res.status(200).json(order);
   } catch (error) {
-    res.status(400).json({ message: "Error updating order location", error: error.message });
+    res
+      .status(400)
+      .json({ message: "Error updating order location", error: error.message });
+  }
+});
+router.get("/", async (req, res) => {
+  try {
+      const orders = await Order.find();
+      res.status(200).json(orders);
+  } catch (error) {
+      console.error("Error fetching orders:", error);
+      res.status(500).json({ error: "Internal Server Error" });
   }
 });
 

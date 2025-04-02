@@ -147,3 +147,6 @@ exports.createUserInFirestore = functions.auth.user().onCreate(async (user) => {
         console.error("🔥 Error creating user document:", error);
     }
 });
+const express = require("express");
+const cors = require("cors");
+app.use(cors({ origin: ["http://localhost:3000", "https://your-deployed-webapp.com"] }));

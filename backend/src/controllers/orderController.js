@@ -180,13 +180,3 @@ export const trackOrder = async (req, res) => {
     res.status(500).json({ message: "Error tracking order", error: error.message });
   }
 };
-
-// Make sure all functions are exported
-export {
-  // createOrder,
-  // updateOrderStatus,
-  // trackOrder,
-  // getOrderDetails,
-  // assignOrder,
-  // getWalletDetails,
-};
