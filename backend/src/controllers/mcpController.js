@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import User from "../models/user.js";
 import Notification from "../models/Notification.js";
 import { io } from "../app.js"; // Ensure correct import of io
+import { get } from "mongoose";
 
 // 📌 Assign an Order
 export const assignOrder = async (req, res) => {
@@ -154,3 +155,12 @@ export const addFundsToWallet = async (req, res) => {
 };
 
 // ✅ **No duplicate exports here**
+export const getAllPickupPartners = async (req, res) => {
+  try {
+    const partners = await PickupPartner.find().select("-password");
+    res.status(200).json(partners);
+  } catch (error) {
+    console.error("Error fetching Pickup Partners:", error);
+    res.status(500).json({ message: "Error fetching Pickup Partners", error: error.message });
+  }
+}
