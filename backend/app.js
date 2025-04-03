@@ -1,25 +1,22 @@
 import express from "express";
 import dotenv from "dotenv";
-import http from "http";
 import cors from "cors";
-import mongoose from "mongoose";
 import helmet from "helmet";
 import compression from "compression";
+import http from "http";
 import Redis from "ioredis";
 import { Server } from "socket.io";
-import connectDB from "./src/config/db.js"; // ✅ Ensure this path is correct
 import logger from "./src/logger.js";
-import cacheMiddleware from "./src/middleware/cacheMiddleware.js";
+import connectDB from "./src/config/db.js"; 
 import { initializeSocket } from "./src/socket.io/initializeSocket.js";
-import apiLimiter from "./src/middleware/rateLimiter.js";
 
 // ✅ Load environment variables first
 dotenv.config();
 
-// ✅ Initialize Express BEFORE using it
+// ✅ Initialize Express FIRST
 const app = express();
 
-// ✅ Apply middleware before routes
+// ✅ Apply middleware BEFORE importing routes
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
@@ -29,11 +26,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// ✅ NOW import middleware after app initialization
+import apiLimiter from "./src/middleware/rateLimiter.js";
+import cacheMiddleware from "./src/middleware/cacheMiddleware.js";
+
 // ✅ Apply rate limiter and caching BEFORE routes
 app.use("/api/auth", apiLimiter);
 app.use(cacheMiddleware);
 
-// Import routes AFTER app is declared
+// ✅ Import routes AFTER app is declared
 import authRoutes from "./src/routes/authRoutes.js";
 import mcpRoutes from "./src/routes/mcpRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
