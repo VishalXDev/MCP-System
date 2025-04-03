@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Styles */
+/* 🌍 Global Styles */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   @apply text-white bg-gray-900; /* Tailwind Dark Mode */
@@ -13,29 +13,30 @@
 }
 
 body {
-  @apply flex items-center justify-center min-h-screen min-w-[320px] m-0;
+  @apply flex items-center justify-center min-h-screen min-w-[320px] m-0 px-4;
 }
 
-/* Links */
+/* 🔗 Links */
 a {
-  @apply font-medium text-blue-500 transition-colors;
+  @apply font-medium text-blue-500 transition-colors duration-200;
 }
 
 a:hover {
-  @apply text-blue-400;
+  @apply text-blue-400 underline;
 }
 
-/* Headings */
+/* 🏷️ Headings */
 h1 {
   @apply text-4xl font-bold leading-tight;
 }
 
-/* Buttons */
+/* 🛠️ Buttons */
 button {
-  @apply rounded-lg border border-transparent px-4 py-2 text-lg font-medium transition-all duration-200 bg-gray-800 hover:border-blue-500 focus:ring focus:ring-blue-500/50;
+  @apply rounded-lg border border-transparent px-4 py-2 text-lg font-medium transition-all duration-200 
+         bg-gray-800 hover:border-blue-500 focus:ring focus:ring-blue-500/50 active:scale-95;
 }
 
-/* Light Mode */
+/* 🌗 Light Mode */
 @media (prefers-color-scheme: light) {
   :root {
     @apply text-gray-900 bg-white;
@@ -46,6 +47,6 @@ button {
   }
 
   button {
-    @apply bg-gray-100 text-gray-900;
+    @apply bg-gray-100 text-gray-900 hover:bg-gray-200;
   }
 }

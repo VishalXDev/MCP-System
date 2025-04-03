@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 import { getUserRole } from "../firebase/roleUtils";
@@ -7,36 +7,41 @@ interface AuthContextType {
   user: User | null;
   role: string;
   loading: boolean;
-  setRole: (role: string) => void; // Add setRole to update the role
+  setRole: (role: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string>("staff"); // Default role is "staff"
+  const [role, setRole] = useState<string>("staff"); // Default role
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
+
+      if (currentUser && !role) { // Only fetch role if user exists and role isn't set
         try {
-          const userRole = await getUserRole(currentUser.uid); // Fetch role from Firestore
-          setRole(userRole || "staff"); // Default to "staff" if no role found
+          const userRole = await getUserRole(currentUser.uid);
+          setRole(userRole || "staff");
         } catch (error) {
-          console.error("Error fetching user role:", error);
+          console.error("❌ Error fetching user role:", error);
           setRole("staff");
         }
       }
-      setLoading(false); // Mark loading as false once user data is processed
+
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [role]); // Depend on role to prevent redundant fetches
+
+  // 🛠️ Memoize context value to prevent unnecessary renders
+  const contextValue = useMemo(() => ({ user, role, loading, setRole }), [user, role, loading]);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, setRole }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
@@ -45,7 +50,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("❌ useAuth must be used within an AuthProvider");
   }
   return context;
 };

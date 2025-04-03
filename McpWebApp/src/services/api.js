@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api"; // Ensure this is set
+const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api"; // Default fallback
 
 export const fetchOrders = async () => {
     try {
@@ -10,10 +10,4 @@ export const fetchOrders = async () => {
         console.error("Error fetching orders:", error);
         return [];
     }
-};
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
-export const fetchOrders = async () => {
-    const response = await fetch(`${API_URL}/orders`);
-    return response.json();
 };

@@ -1,15 +1,17 @@
-import { doc, getDoc, setDoc } from "firebase/firestore"; 
-import { db } from "./firebaseConfig"; // Correct Firebase import
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "./firebaseConfig"; // Ensure correct Firebase import
 
-// Fetch environment variables correctly (Ensure these exist in .env)
+// ✅ Admin UID (Ensure it's correctly set in .env)
 export const ADMIN_UID = import.meta.env.VITE_ADMIN_UID;
 
 /**
- * Fetches the user role from Firestore.
+ * 🔍 Fetches the user role from Firestore.
  * @param uid - User ID
  * @returns Role of the user (default: "staff")
  */
 export const getUserRole = async (uid: string): Promise<string> => {
+  if (!uid) return "staff"; // 🚨 Ensure UID is valid
+
   try {
     const userRef = doc(db, "users", uid);
     const docSnap = await getDoc(userRef);
@@ -18,23 +20,30 @@ export const getUserRole = async (uid: string): Promise<string> => {
       const userData = docSnap.data();
       return userData?.role ?? "staff"; // Default to "staff"
     } else {
-      console.warn(`User with UID ${uid} not found in Firestore.`);
+      console.warn(`⚠ User ${uid} not found in Firestore.`);
     }
   } catch (error) {
-    console.error("Error fetching user role:", (error as Error).message);
+    console.error("🚨 Error fetching user role:", (error as Error).message);
   }
-  return "staff"; // Fail-safe role assignment
+
+  return "staff"; // 🚨 Fail-safe return
 };
 
 /**
- * Updates the user role (Admin only).
- * @param uid - User ID
+ * 🔒 Securely updates the user role (Only Admin can update roles).
+ * @param adminUid - Admin UID (current user)
+ * @param uid - User ID whose role needs to be updated
  * @param newRole - New role to assign
  */
-export const updateUserRole = async (uid: string, newRole: string): Promise<void> => {
+export const updateUserRole = async (adminUid: string, uid: string, newRole: string): Promise<void> => {
   try {
-    if (!uid || !newRole) {
-      throw new Error("Invalid parameters: UID and role are required.");
+    if (!adminUid || !uid || !newRole) {
+      throw new Error("Invalid parameters: Admin UID, User UID, and role are required.");
+    }
+
+    // 🔒 Security Check: Ensure only the Admin can update roles
+    if (adminUid !== ADMIN_UID) {
+      throw new Error("❌ Unauthorized: Only the admin can update roles.");
     }
 
     const userRef = doc(db, "users", uid);

@@ -5,8 +5,9 @@ interface DashboardCardProps {
 }
 
 const DashboardCard = ({ title, value, color = "bg-gray-800" }: DashboardCardProps) => {
-  // Check if color is light, then change text color dynamically
-  const textColor = color.includes("gray") || color.includes("dark") ? "text-white" : "text-black";
+  // Define colors that need dark text
+  const lightBackgrounds = ["bg-white", "bg-yellow-100", "bg-gray-200"];
+  const textColor = lightBackgrounds.includes(color) ? "text-black" : "text-white";
 
   return (
     <article className={`${color} ${textColor} p-6 rounded-lg shadow-md min-w-40`}>

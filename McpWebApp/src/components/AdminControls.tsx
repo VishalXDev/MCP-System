@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import { updateUserRole } from "../firebase/roleUtils";
+import { auth } from "../firebase/firebaseConfig"; // ✅ Import Firebase auth
 
 const AdminControls = () => {
   const [userId, setUserId] = useState("");
   const [newRole, setNewRole] = useState("staff");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate(); // Initialize navigation
+  const navigate = useNavigate();
 
   const handleUpdateRole = async () => {
     if (!userId) {
@@ -16,10 +17,16 @@ const AdminControls = () => {
 
     try {
       setLoading(true);
-      await updateUserRole(userId, newRole);
+      const adminUid = auth.currentUser?.uid; // ✅ Get the current admin's UID
+
+      if (!adminUid) {
+        throw new Error("Unauthorized action: Admin UID not found.");
+      }
+
+      await updateUserRole(adminUid, userId, newRole); // ✅ Pass all 3 arguments
       alert("User role updated successfully!");
       setUserId(""); // Clear input after update
-      
+
       // Redirect to the dashboard
       navigate("/dashboard");
     } catch (error) {
@@ -39,13 +46,13 @@ const AdminControls = () => {
         placeholder="Enter User ID"
         value={userId}
         onChange={(e) => setUserId(e.target.value)}
-        className="p-2 border rounded mb-2 w-full"
+        className="p-2 border rounded mb-2 w-full text-black bg-white"
       />
 
       <select
         value={newRole}
         onChange={(e) => setNewRole(e.target.value)}
-        className="p-2 border rounded w-full mb-2"
+        className="p-2 border rounded w-full mb-2 text-black bg-white"
       >
         <option value="staff">Staff</option>
         <option value="manager">Manager</option>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaHome, FaClipboardList, FaWallet, FaCog, FaSignOutAlt, FaUser } from "react-icons/fa";
+import { FaHome, FaClipboardList, FaWallet, FaCog, FaSignOutAlt } from "react-icons/fa";
 import { auth } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 
@@ -24,12 +24,14 @@ const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(true);
-  const ordersPerPage = 5;
-  const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
 
+  const ordersPerPage = 5;
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+
+  // Fetch Auth User
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser ? { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName } : null);
@@ -37,6 +39,7 @@ const Orders: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // Fetch Orders
   useEffect(() => {
     setLoading(true);
     fetch("/api/orders")
@@ -51,28 +54,20 @@ const Orders: React.FC = () => {
       });
   }, []);
 
-  const handleCancelOrder = (orderId: string) => {
-    setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
-  };
-
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order))
-    );
-  };
-
+  // Handle Logout
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/login");
   };
 
+  // Pagination Logic
   const indexOfLastOrder = currentPage * ordersPerPage;
   const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
   const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   return (
     <AuthContext.Provider value={{ user }}>
-      <div className="p-6 animate-fadeIn max-w-7xl mx-auto">
+      <div className="p-6 max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold mb-6 text-gray-800 text-center sm:text-left">Orders</h1>
 
         <div className="flex">
@@ -96,7 +91,7 @@ const Orders: React.FC = () => {
                   <span>{item.name}</span>
                 </li>
               ))}
-              {user ? (
+              {user && (
                 <li
                   className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-red-600"
                   onClick={handleLogout}
@@ -104,23 +99,6 @@ const Orders: React.FC = () => {
                   <FaSignOutAlt />
                   <span>Logout</span>
                 </li>
-              ) : (
-                <>
-                  <li
-                    className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-blue-600"
-                    onClick={() => navigate("/login")}
-                  >
-                    <FaUser />
-                    <span>Login</span>
-                  </li>
-                  <li
-                    className="mb-4 p-2 rounded-lg flex items-center space-x-2 cursor-pointer hover:bg-green-600"
-                    onClick={() => navigate("/signup")}
-                  >
-                    <FaUser />
-                    <span>Signup</span>
-                  </li>
-                </>
               )}
             </ul>
           </aside>
@@ -129,6 +107,8 @@ const Orders: React.FC = () => {
           <div className="overflow-x-auto bg-white shadow-lg rounded-2xl p-4 flex-1">
             {loading ? (
               <p className="text-center text-gray-600">Loading orders...</p>
+            ) : orders.length === 0 ? (
+              <p className="text-center text-gray-500">No orders available.</p>
             ) : (
               <>
                 <table className="min-w-full">
@@ -138,7 +118,6 @@ const Orders: React.FC = () => {
                       <th className="py-4 px-6 text-left">Customer</th>
                       <th className="py-4 px-6 text-center">Status</th>
                       <th className="py-4 px-6 text-center">Total</th>
-                      <th className="py-4 px-6 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="text-gray-600 text-sm font-light">
@@ -146,48 +125,29 @@ const Orders: React.FC = () => {
                       <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-100 transition-all duration-300">
                         <td className="py-4 px-6 text-left font-medium">{order.id}</td>
                         <td className="py-4 px-6 text-left">{order.customer}</td>
-                        <td className="py-4 px-6 text-center">
-                          <select
-                            value={order.status}
-                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                            className="px-3 py-1 rounded-lg text-xs font-semibold transition-all bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="Processing">Processing</option>
-                            <option value="Shipped">Shipped</option>
-                            <option value="Delivered">Delivered</option>
-                          </select>
-                        </td>
+                        <td className="py-4 px-6 text-center">{order.status}</td>
                         <td className="py-4 px-6 text-center font-semibold">{order.total}</td>
-                        <td className="py-4 px-6 text-center flex justify-center space-x-2">
-                          <button className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-all shadow-md hover:shadow-lg">
-                            View
-                          </button>
-                          <button
-                            onClick={() => handleCancelOrder(order.id)}
-                            className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
-                          >
-                            Cancel
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
                 {/* Pagination */}
-                <div className="flex justify-center mt-4">
-                  {Array.from({ length: totalPages }, (_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentPage(index + 1)}
-                      className={`px-4 py-2 mx-1 rounded-lg ${
-                        currentPage === index + 1 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-4">
+                    {Array.from({ length: totalPages }, (_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentPage(index + 1)}
+                        className={`px-4 py-2 mx-1 rounded-lg ${
+                          currentPage === index + 1 ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"
+                        }`}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -195,38 +155,6 @@ const Orders: React.FC = () => {
       </div>
     </AuthContext.Provider>
   );
-};
-import React, { useState, useEffect } from 'react';
-import { fetchOrders } from '../api';
-
-const Orders = () => {
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
-        fetchOrders()
-            .then(data => {
-                setOrders(data);
-                setLoading(false);
-            })
-            .catch(err => {
-                setError('Failed to load orders');
-                setLoading(false);
-            });
-    }, []);
-
-    if (loading) return <p>Loading orders...</p>;
-    if (error) return <p>{error}</p>;
-
-    return (
-        <div>
-            <h1>Orders</h1>
-            {orders.map(order => (
-                <p key={order._id}>{order.productName}</p>
-            ))}
-        </div>
-    );
 };
 
 export default Orders;
