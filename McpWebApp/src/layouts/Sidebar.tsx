@@ -1,6 +1,12 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { FaTachometerAlt, FaBox, FaWallet, FaCog, FaMapMarkedAlt } from "react-icons/fa";
+import {
+  FaTachometerAlt,
+  FaBox,
+  FaWallet,
+  FaCog,
+  FaMapMarkedAlt,
+} from "react-icons/fa";
 
 const Sidebar = () => {
   const { role } = useAuth(); // Get user role from AuthContext
@@ -91,6 +97,16 @@ const Sidebar = () => {
               aria-label="Settings"
             >
               <FaCog /> <span>Settings</span>
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/users" className="p-3 block hover:bg-gray-200">
+              User Management
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/orders" className="p-3 block hover:bg-gray-200">
+              Order Management
             </NavLink>
           </li>
         </ul>

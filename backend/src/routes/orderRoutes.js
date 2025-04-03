@@ -1,3 +1,4 @@
+const { sendNotification } = require("../socket.js");
 import express from "express";
 import { check, validationResult } from "express-validator";
 import {
@@ -70,7 +71,24 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-
+    router.put("/:orderId/status", authMiddleware, async (req, res) => {
+      try {
+        const { status } = req.body;
+        const order = await Order.findById(req.params.orderId);
+        if (!order) return res.status(404).json({ error: "Order not found" });
+    
+        order.status = status;
+        await order.save();
+    
+        // Send notification to the assigned pickup partner
+        sendNotification(order.pickupPartnerId, `Order ${order._id} status updated to ${status}`);
+    
+        res.json({ message: "Order status updated successfully" });
+      } catch (error) {
+        res.status(500).json({ error: "Failed to update order status" });
+      }
+    });
+    
     // Emit the updated location to the assigned partner via Socket.IO
     if (order.assignedTo) {
       getSocketIO()
