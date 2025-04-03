@@ -7,15 +7,17 @@ import {
   assignOrder,
   getAllOrders,
   addFundsToWallet,
-  getAllPickupPartners  // Ensure this is correctly exported from mcpController.js
+  getAllPickupPartners
 } from "../controllers/mcpController.js";
 
 const router = express.Router();
 
+// Ensure all route handlers are correctly defined and exported in mcpController.js
+
 // 📌 Pickup Partner Management
 router.post("/add-partner", protect, isMCP, addPickupPartner);
 router.delete("/remove-partner/:partnerId", protect, isMCP, removePickupPartner);
-router.get("/partners", protect, isMCP, getAllPickupPartners);  // Route for getting all partners
+router.get("/partners", protect, isMCP, getAllPickupPartners);
 
 // 📌 Order Management
 router.post("/assign-order", protect, isMCP, assignOrder);
