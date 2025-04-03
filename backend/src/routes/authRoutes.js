@@ -2,11 +2,9 @@ import express from "express";
 import { body } from "express-validator";
 import { signup, login } from "../controllers/authController.js";
 import { updateUser, deleteUser } from "../controllers/userController.js";
-import { protect } from "../middleware/authMiddleware.js"; // Protect route middleware
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import User from '../models/user.js';
-// const router = express.Router();
+import { protect } from "../middleware/authMiddleware.js"; // Middleware to protect routes
+
+const router = express.Router(); // ✅ Initialize router correctly
 
 // Signup Route
 router.post(
@@ -31,55 +29,10 @@ router.post(
   login
 );
 
-// Update user
+// Update user details (Protected Route)
 router.put("/update/:id", protect, updateUser);
 
-// Delete user
+// Delete user (Protected Route)
 router.delete("/delete/:id", protect, deleteUser);
-const router = express.Router();
 
-// Sign-up route
-router.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
-
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const newUser = new User({
-    email,
-    password: hashedPassword,
-  });
-
-  try {
-    await newUser.save();
-    res.status(201).json({ message: 'User created' });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Login route
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(400).json({ error: 'User not found' });
-  }
-
-  // Compare password
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return res.status(400).json({ error: 'Invalid credentials' });
-  }
-
-  // Generate JWT token
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: '1h',
-  });
-
-  res.json({ token });
-});
-
-export default router;
+export default router; // ✅ Export correctly

@@ -11,3 +11,9 @@ export const fetchOrders = async () => {
         return [];
     }
 };
+const API_URL = process.env.REACT_APP_BACKEND_URL;
+
+export const fetchOrders = async () => {
+    const response = await fetch(`${API_URL}/orders`);
+    return response.json();
+};

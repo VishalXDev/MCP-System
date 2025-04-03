@@ -5,15 +5,19 @@ const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
 // 📌 Middleware to verify JWT token
 export const protect = async (req, res, next) => {
-  const token = req.header("Authorization")?.split(" ")[1];
+  const token = req.header("Authorization")?.replace("Bearer ", "");
 
-  if (!token) return res.status(401).json({ message: "Access Denied. No token provided." });
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied. No token provided." });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");
 
-    if (!req.user) return res.status(401).json({ message: "User not found" });
+    if (!req.user) {
+      return res.status(401).json({ message: "User not found" });
+    }
 
     next();
   } catch (error) {
@@ -36,17 +40,3 @@ export const isPickupPartner = (req, res, next) => {
   }
   next();
 };
-// const jwt = require("jsonwebtoken");
-const auth = (req, res, next) => {
-  const token = req.header("Authorization");
-  if (!token) return res.status(401).json({ message: "Access Denied!" });
-
-  try {
-      const verified = jwt.verify(token.replace("Bearer ", ""), process.env.JWT_SECRET);
-      req.user = verified;
-      next();
-  } catch (err) {
-      res.status(400).json({ message: "Invalid Token!" });
-  }
-};
-// module.exports = auth;

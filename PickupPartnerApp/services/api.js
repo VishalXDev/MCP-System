@@ -37,3 +37,9 @@ export const fetchWalletData = async () => {
     return { balance: 0, transactions: [] };
   }
 };
+import { BACKEND_URL } from '@env';
+
+export const fetchOrders = async () => {
+    const response = await fetch(`${BACKEND_URL}/orders`);
+    return response.json();
+};

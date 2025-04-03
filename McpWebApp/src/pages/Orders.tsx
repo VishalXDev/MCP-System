@@ -196,5 +196,37 @@ const Orders: React.FC = () => {
     </AuthContext.Provider>
   );
 };
+import React, { useState, useEffect } from 'react';
+import { fetchOrders } from '../api';
+
+const Orders = () => {
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchOrders()
+            .then(data => {
+                setOrders(data);
+                setLoading(false);
+            })
+            .catch(err => {
+                setError('Failed to load orders');
+                setLoading(false);
+            });
+    }, []);
+
+    if (loading) return <p>Loading orders...</p>;
+    if (error) return <p>{error}</p>;
+
+    return (
+        <div>
+            <h1>Orders</h1>
+            {orders.map(order => (
+                <p key={order._id}>{order.productName}</p>
+            ))}
+        </div>
+    );
+};
 
 export default Orders;
