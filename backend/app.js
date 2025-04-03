@@ -54,12 +54,16 @@ app.use("/api/users", userRoutes);
 const server = http.createServer(app);
 
 // ✅ Initialize Redis
-const redis = new Redis({
-  host: process.env.REDIS_HOST || "localhost",
-  port: process.env.REDIS_PORT || 6379,
-  password: process.env.REDIS_PASSWORD || "",
+const redis = new Redis(process.env.REDIS_URL, {
+  tls: {} // Enables SSL for Redis
+});
+redis.on("connect", () => {
+  console.log("✅ Redis Connected!");
 });
 
+redis.on("error", (err) => {
+  console.error("❌ Redis Error:", err);
+});
 // ✅ Initialize Socket.IO
 const io = new Server(server, {
   cors: {

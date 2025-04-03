@@ -1,3 +1,4 @@
+// ✅ Import Modules
 import express from "express";
 import dotenv from "dotenv";
 import http from "http";
@@ -11,18 +12,18 @@ import logger from "./logger.js";
 import apiLimiter from "./middleware/rateLimiter.js";
 import cacheMiddleware from "./middleware/cacheMiddleware.js";
 import { initializeSocket } from "./socket.io/initializeSocket.js";
-import redis from "./config/redis.js";
+import Redis from "ioredis";  // ✅ Import Redis ONCE at the top
 
-// ✅ Load environment variables first
-dotenv.config();
-
-// ✅ MOVE ALL ROUTE IMPORTS TO THE TOP
+// ✅ Route Imports
 import authRoutes from "./routes/authRoutes.js";
 import mcpRoutes from "./routes/mcpRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import pickupPartnerRoutes from "./routes/pickupPartnerRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+
+// ✅ Load environment variables
+dotenv.config();
 
 // ✅ Initialize Express
 const app = express();
@@ -53,7 +54,7 @@ initializeSocket(io);
 app.use("/api/auth", apiLimiter);
 app.use(cacheMiddleware);
 
-// ✅ Register Routes (AFTER importing them)
+// ✅ Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/mcp", mcpRoutes);
 app.use("/api/partner", pickupPartnerRoutes);
@@ -92,12 +93,16 @@ connectDB()
     process.exit(1);
   });
 
-// ✅ Redis Test
-redis.set("test_key", "Hello from Redis", "EX", 60);
-redis.get("test_key", (err, result) => {
-  if (err) console.error(err);
-  console.log("Redis Test Value:", result);
+// ✅ Redis Configuration (Only Declared Once)
+const redis = new Redis("redis://default:BTKJ2kD0ByWoyN1qdMACv8winE9YOMVN@redis-12388.c301.ap-south-1-1.ec2.redns.redis-cloud.com:12388");
+
+redis.on("connect", () => {
+  console.log("✅ Redis Connected!");
+});
+
+redis.on("error", (err) => {
+  console.error("❌ Redis Error:", err);
 });
 
 // ✅ Export for external use
-export { io, server };
+export { io, server, redis };
