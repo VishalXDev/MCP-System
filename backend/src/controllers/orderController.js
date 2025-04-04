@@ -8,14 +8,17 @@ export const createOrder = async (req, res) => {
   try {
     const { partnerId, userId, totalAmount, orderDetails, location } = req.body;
 
-    if (!location && (!partnerId || !userId || !orderDetails || typeof totalAmount !== "number")) {
+    if (!location || !partnerId || !userId || !orderDetails || typeof totalAmount !== "number") {
       return res.status(400).json({ message: "Invalid or missing required fields" });
     }
+
+    const earnings = totalAmount * 0.1; // default 10% earnings
 
     const order = await Order.create({
       partnerId,
       userId,
       totalAmount,
+      earnings,
       orderDetails,
       location,
       status: "pending",
@@ -55,10 +58,13 @@ export const assignOrder = async (req, res) => {
     partner.assignedOrders.push(order._id);
     await partner.save();
 
-    getSocketIO().to(`partner_${partnerId}`).emit("newOrder", {
-      message: "You have a new order assigned!",
-      order,
-    });
+    const io = getSocketIO();
+    if (io) {
+      io.to(`partner_${partnerId}`).emit("newOrder", {
+        message: "You have a new order assigned!",
+        order,
+      });
+    }
 
     res.json(order);
   } catch (err) {
@@ -66,7 +72,7 @@ export const assignOrder = async (req, res) => {
   }
 };
 
-// 📌 Update Order Status
+// 📌 Update Order Status (Generic)
 export const updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -79,7 +85,7 @@ export const updateStatus = async (req, res) => {
   }
 };
 
-// 📌 Update Order Status with Authorization + Wallet Handling
+// 📌 Update Order Status with Auth + Wallet
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
@@ -109,7 +115,7 @@ export const updateOrderStatus = async (req, res) => {
         partner.transactions.push({
           amount: earnings,
           type: "credit",
-          description: `Payment for Order ${order.orderId}`,
+          description: `Payment for Order ${order._id}`,
         });
         await partner.save();
       }
@@ -120,17 +126,18 @@ export const updateOrderStatus = async (req, res) => {
     await Notification.create({
       userId: order.assignedTo._id,
       title: "Order Status Updated",
-      message: `Order ${order.orderId} status changed to ${status}`,
+      message: `Order ${order._id} status changed to ${status}`,
       type: "order",
     });
 
-    getSocketIO()
-      .to(`partner_${order.assignedTo._id}`)
-      .emit("orderStatusUpdate", {
-        orderId,
+    const io = getSocketIO();
+    if (io) {
+      io.to(`partner_${order.assignedTo._id}`).emit("orderStatusUpdate", {
+        orderId: order._id,
         status,
-        message: `Order ${orderId} is now ${status}`,
+        message: `Order ${order._id} is now ${status}`,
       });
+    }
 
     res.status(200).json({ message: "Order status updated successfully", order });
   } catch (error) {
@@ -161,7 +168,7 @@ export const getOrderDetails = async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
 
-    const order = await Order.findOne({ orderId }).populate(
+    const order = await Order.findById(orderId).populate(
       "assignedTo",
       "name email phone"
     );
@@ -178,14 +185,14 @@ export const trackOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    const order = await Order.findOne({ orderId }).populate(
+    const order = await Order.findById(orderId).populate(
       "assignedTo",
       "name email phone"
     );
     if (!order) return res.status(404).json({ message: "Order not found" });
 
     res.status(200).json({
-      orderId,
+      orderId: order._id,
       status: order.status,
       pickupLocation: order.pickupLocation,
       dropoffLocation: order.dropoffLocation,

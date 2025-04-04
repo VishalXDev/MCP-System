@@ -9,15 +9,15 @@ import { Server } from "socket.io";
 
 import logger from "./logger.js";
 import connectDB from "./config/db.js";
-import { initializeSocket } from "./socket.io/initializeSocket.js";
+import { initializeSocket } from "./socket.js"; // ✅ correct path for socket module
 
 // Load environment variables
 dotenv.config();
 
-// Initialize Express
+// Initialize Express app
 const app = express();
 
-// Apply middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(helmet());
@@ -27,13 +27,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware
+// Custom Middleware
 import apiLimiter from "./middleware/rateLimiter.js";
 import cacheMiddleware from "./middleware/cacheMiddleware.js";
 
-// Apply middleware to routes
-app.use("/api/auth", apiLimiter);
-app.use(cacheMiddleware);
+// Apply middleware
+app.use("/api/auth", apiLimiter); // Rate limiting only on auth route
+app.use(cacheMiddleware);         // Global caching middleware
 
 // Routes
 import authRoutes from "./routes/authRoutes.js";
@@ -43,46 +43,47 @@ import pickupPartnerRoutes from "./routes/pickupPartnerRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-// Register routes
+// Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/mcp", mcpRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/partner", pickupPartnerRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/api/users", userRoutes);
 
-// Create server
+// Create HTTP server
 const server = http.createServer(app);
 
-// Redis setup
+// Redis Setup
 const redis = new Redis(process.env.REDIS_URL, {
-  tls: {}
+  tls: {} // If using Redis over SSL
 });
 
 redis.on("connect", () => {
   console.log("✅ Redis Connected!");
 });
-
 redis.on("error", (err) => {
   console.error("❌ Redis Error:", err);
 });
 
-// Socket.io
+// Socket.io setup
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"],
-  },
+    methods: ["GET", "POST"]
+  }
 });
 
+// Initialize socket logic
 initializeSocket(io);
 
+// Optionally handle additional Socket events
 io.on("connection", (socket) => {
-  console.log(`User Connected: ${socket.id}`);
+  console.log(`🔌 Socket connected: ${socket.id}`);
 
   socket.on("joinOrderRoom", (orderId) => {
     socket.join(orderId);
-    console.log(`User joined order room: ${orderId}`);
+    console.log(`User joined room for order: ${orderId}`);
   });
 
   socket.on("orderStatusUpdate", ({ orderId, status }) => {
@@ -90,11 +91,11 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log(`User Disconnected: ${socket.id}`);
+    console.log(`❌ Socket disconnected: ${socket.id}`);
   });
 });
 
-// MongoDB & server start
+// Connect to MongoDB & start server
 connectDB()
   .then(() => {
     const PORT = process.env.PORT || 5000;
@@ -102,8 +103,8 @@ connectDB()
       console.log(`🚀 Server running on port ${PORT}`);
     });
   })
-  .catch((error) => {
-    console.error("❌ MongoDB Connection Error:", error);
+  .catch((err) => {
+    console.error("❌ MongoDB Connection Error:", err);
     process.exit(1);
   });
 

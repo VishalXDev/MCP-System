@@ -11,8 +11,8 @@ import {
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
-import { getSocketIO } from "../socket.io/index.js";
-import { sendNotification } from "../socket.js";
+import { getSocketIO } from "../socket.io/index.js"; // if you use this anywhere else
+import { sendNotification } from "../socket.js"; // ✅ now properly exported from socket.js
 
 const router = express.Router();
 
@@ -71,15 +71,24 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Notify assigned pickup partner via socket
+    // ✅ Optional: notify partner with socket
     if (order.assignedTo) {
+      const partnerId = order.assignedTo._id?.toString() || order.assignedTo;
       getSocketIO()
-        .to(`partner_${order.assignedTo._id}`)
+        .to(`partner_${partnerId}`)
         .emit("orderLocationUpdated", {
           orderId: order._id,
           latitude,
           longitude,
         });
+
+      // Optionally also use sendNotification
+      sendNotification(partnerId, {
+        type: "locationUpdate",
+        orderId: order._id,
+        latitude,
+        longitude,
+      });
     }
 
     res.status(200).json(order);

@@ -1,14 +1,10 @@
 import Redis from "ioredis";
 import dotenv from "dotenv";
 
-dotenv.config(); // Load environment variables
+dotenv.config();
 
-const redis = new Redis({
-  host: process.env.REDIS_HOST,
-  port: process.env.REDIS_PORT,
-  password: process.env.REDIS_PASSWORD,
-  tls: {}, // Required for Redis Cloud
-});
+// ✅ Use rediss:// URL from .env directly
+const redis = new Redis(process.env.REDIS_URL);
 
 redis.on("connect", () => {
   console.log("✅ Redis Connected Successfully!");
