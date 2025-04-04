@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { db } from "../firebase/firebaseConfig";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
+import API from "../utils/axios.ts";
 
 interface DashboardStats {
   totalOrders: number;
@@ -9,7 +10,7 @@ interface DashboardStats {
   activeUsers: number;
   pendingOrders: number;
   walletBalance: number;
-  unassignedOrders: number; // ✅ Added this field
+  unassignedOrders: number;
 }
 
 interface Order {
@@ -17,7 +18,18 @@ interface Order {
   customer: string;
   amount: number;
   status: string;
-  assignedTo?: string; // ✅ Ensuring assignedTo field exists
+  assignedTo?: string;
+}
+
+interface Partner {
+  isOnline: boolean;
+  role: string;
+}
+
+interface User {
+  role: string;
+  wallet?: number;
+  isOnline?: boolean;
 }
 
 const Dashboard = () => {
@@ -28,9 +40,11 @@ const Dashboard = () => {
     activeUsers: 0,
     pendingOrders: 0,
     walletBalance: 0,
-    unassignedOrders: 0, // ✅ Initialize it
+    unassignedOrders: 0,
   });
   const [orders, setOrders] = useState<Order[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [wallet, setWallet] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,10 +78,9 @@ const Dashboard = () => {
 
         setOrders(ordersList);
 
-        // ✅ Calculate unassigned orders and update stats
         const unassignedCount = ordersList.filter((order) => !order.assignedTo).length;
-        setStats((prevStats) => ({
-          ...prevStats,
+        setStats((prev) => ({
+          ...(prev as DashboardStats),
           unassignedOrders: unassignedCount,
         }));
       } catch (error) {
@@ -75,9 +88,41 @@ const Dashboard = () => {
       }
     };
 
-    fetchStats();
-    fetchOrders();
-    setLoading(false);
+    const fetchAPIData = async () => {
+      try {
+        const [userRes, orderRes] = await Promise.all([
+          API.get("/users"),
+          API.get("/orders"),
+        ]);
+
+        const users: User[] = userRes.data;
+        const admin = users.find((u) => u.role === "admin");
+        setWallet(admin?.wallet || 0);
+        setOrders(orderRes.data);
+        const partnersFiltered: Partner[] = users
+        .filter((u): u is Partner => u.role === "partner" && typeof u.isOnline === "boolean");
+      
+      setPartners(partnersFiltered);
+            } catch (error) {
+        console.error("Error fetching API data:", error);
+      }
+    };
+
+    const fetchData = async () => {
+      try {
+        if (process.env.REACT_APP_USE_FIREBASE === "true") {
+          await Promise.all([fetchStats(), fetchOrders()]);
+        } else {
+          await fetchAPIData();
+        }
+      } catch (error) {
+        console.error("Error in data fetching:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [user]);
 
   const dashboardCards = useMemo(
@@ -88,7 +133,7 @@ const Dashboard = () => {
         { title: "Active Users", value: stats.activeUsers, color: "text-purple-500", visible: role === "admin" },
         { title: "Pending Orders", value: stats.pendingOrders, color: "text-red-500", visible: role === "admin" || role === "pickup-partner" },
         { title: "Wallet Balance", value: `₹${stats.walletBalance.toLocaleString()}`, color: "text-yellow-500", visible: role === "admin" },
-        { title: "Unassigned Orders", value: stats.unassignedOrders, color: "text-orange-500", visible: role === "admin" }, // ✅ Added this
+        { title: "Unassigned Orders", value: stats.unassignedOrders, color: "text-orange-500", visible: role === "admin" },
       ].filter((card) => card.visible),
     [stats, role]
   );
@@ -109,7 +154,7 @@ const Dashboard = () => {
     );
   }
 
-  return (
+  const renderFirebaseDashboard = () => (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">
         Welcome, {user?.displayName || user?.email || "User"}!
@@ -121,7 +166,6 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Recent Orders Table */}
       <div className="mt-8 bg-white dark:bg-gray-900 shadow-lg rounded-2xl p-6">
         <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
         <table className="w-full border-collapse border border-gray-300">
@@ -155,9 +199,37 @@ const Dashboard = () => {
       </div>
     </div>
   );
+
+  const renderAPIDashboard = () => (
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">MCP Dashboard</h1>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-white shadow-md p-4 rounded-lg">
+          <h2 className="text-lg font-semibold">Wallet Balance</h2>
+          <p className="text-2xl font-bold text-green-600">₹{wallet}</p>
+        </div>
+
+        <div className="bg-white shadow-md p-4 rounded-lg">
+          <h2 className="text-lg font-semibold">Total Orders</h2>
+          <p className="text-2xl font-bold">{orders.length}</p>
+        </div>
+
+        <div className="bg-white shadow-md p-4 rounded-lg">
+          <h2 className="text-lg font-semibold">Partners Online</h2>
+          <p className="text-2xl font-bold">
+            {partners.filter((p) => p.isOnline).length} / {partners.length}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return process.env.REACT_APP_USE_FIREBASE === "true"
+    ? renderFirebaseDashboard()
+    : renderAPIDashboard();
 };
 
-// ✅ Reusable Dashboard Card Component
 const DashboardCard = ({ title, value, color }: { title: string; value: string | number; color: string }) => {
   return (
     <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 flex flex-col items-center transition-transform transform hover:scale-105">

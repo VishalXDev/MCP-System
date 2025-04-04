@@ -8,7 +8,9 @@ export const protect = async (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
-    return res.status(401).json({ message: "Access Denied. No token provided." });
+    return res
+      .status(401)
+      .json({ message: "Access Denied. No token provided." });
   }
 
   try {
@@ -28,7 +30,9 @@ export const protect = async (req, res, next) => {
 // 📌 Middleware to check if user is MCP
 export const isMCP = (req, res, next) => {
   if (!req.user || req.user.role !== "MCP") {
-    return res.status(403).json({ message: "Access denied. MCP role required." });
+    return res
+      .status(403)
+      .json({ message: "Access denied. MCP role required." });
   }
   next();
 };
@@ -36,7 +40,21 @@ export const isMCP = (req, res, next) => {
 // 📌 Middleware to check if user is Pickup Partner
 export const isPickupPartner = (req, res, next) => {
   if (!req.user || req.user.role !== "PickupPartner") {
-    return res.status(403).json({ message: "Access denied. Pickup Partner role required." });
+    return res
+      .status(403)
+      .json({ message: "Access denied. Pickup Partner role required." });
   }
   next();
+};
+module.exports = function (req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "Access denied" });
+
+  try {
+    const verified = jwt.verify(token, JWT_SECRET);
+    req.user = verified;
+    next();
+  } catch (err) {
+    res.status(400).json({ error: "Invalid token" });
+  }
 };

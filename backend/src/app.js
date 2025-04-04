@@ -12,7 +12,7 @@ import logger from "./logger.js";
 import apiLimiter from "./middleware/rateLimiter.js";
 import cacheMiddleware from "./middleware/cacheMiddleware.js";
 import { initializeSocket } from "./socket.io/initializeSocket.js";
-import Redis from "ioredis";  // ✅ Import Redis ONCE at the top
+import Redis from "ioredis"; // ✅ Import Redis ONCE at the top
 
 // ✅ Route Imports
 import authRoutes from "./routes/authRoutes.js";
@@ -94,7 +94,9 @@ connectDB()
   });
 
 // ✅ Redis Configuration (Only Declared Once)
-const redis = new Redis("redis://default:BTKJ2kD0ByWoyN1qdMACv8winE9YOMVN@redis-12388.c301.ap-south-1-1.ec2.redns.redis-cloud.com:12388");
+const redis = new Redis(
+  "redis://default:BTKJ2kD0ByWoyN1qdMACv8winE9YOMVN@redis-12388.c301.ap-south-1-1.ec2.redns.redis-cloud.com:12388"
+);
 
 redis.on("connect", () => {
   console.log("✅ Redis Connected!");
@@ -103,6 +105,14 @@ redis.on("connect", () => {
 redis.on("error", (err) => {
   console.error("❌ Redis Error:", err);
 });
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+const userRoutes = require("./routes/users");
+app.use("/api/users", userRoutes);
+const orderRoutes = require("./routes/orders");
+app.use("/api/orders", orderRoutes);
+const transactionRoutes = require("./routes/transactions");
+app.use("/api/transactions", transactionRoutes);
 
 // ✅ Export for external use
 export { io, server, redis };

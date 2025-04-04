@@ -1,31 +1,39 @@
 import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
+// Pages
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import AdminDashboard from "./components/AdminControls";
-import Settings from "./components/Settings";
-import OrderTracking from "./components/OrderTracking";
-import NotFound from "./pages/NotFound";
-import ProtectedRoute from "./components/ProtectedRoute";
 import UserManagement from "./pages/UserManagement";
 import OrderManagement from "./pages/OrderManagement";
 import OrderDetails from "./pages/OrderDetails";
-import { AuthProvider } from "./context/AuthContext";
-import Notifications from "./components/Notifications"; // ✅ Add Notifications component
+import NotFound from "./pages/NotFound";
+import WalletPage from "./pages/Wallet";         // ✅ Make sure this path is correct
+import ReportsPage from "./pages/Reports";       // ✅ Make sure this path is correct
 
+// Components
+import AdminDashboard from "./components/AdminControls";
+import Settings from "./components/Settings";
+import OrderTracking from "./components/OrderTracking";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Notifications from "./components/Notifications";
+
+// Context
+import { AuthProvider } from "./context/AuthContext";
+
+// Styles
 import "./App.css";
 import "./index.css";
 
-// ✅ Initialize WebSocket connection (update with backend URL)
-const socket = io("http://localhost:5000");
+// Initialize WebSocket connection
+const socket: Socket = io("http://localhost:5000");
 
 function App() {
   useEffect(() => {
-    socket.on("notification", (message) => {
-      alert(message); // Replace with a toast notification system
+    socket.on("notification", (message: string) => {
+      alert(message); // Replace with toast if needed
     });
 
     return () => {
@@ -35,13 +43,14 @@ function App() {
 
   return (
     <AuthProvider>
-      <Notifications /> {/* ✅ Display real-time notifications */}
+      <Notifications />
       <Routes>
-        {/* 🆓 Public Routes */}
+        {/* Public Routes */}
         <Route path="/" element={<Login />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* 🔐 Protected Routes (User & Admin) */}
+        {/* Protected Routes (User + Admin) */}
         <Route
           path="/dashboard"
           element={
@@ -66,8 +75,40 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/order/:orderId"
+          element={
+            <ProtectedRoute allowedRoles={["user", "admin"]}>
+              <OrderDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/wallet"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <WalletPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <ReportsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* 🔐 Admin Only Routes */}
+        {/* Admin-Only Routes */}
         <Route
           path="/admin-dashboard"
           element={
@@ -93,17 +134,7 @@ function App() {
           }
         />
 
-        {/* 🛒 Order Details (Dynamic Route) */}
-        <Route
-          path="/order/:orderId"
-          element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
-              <OrderDetails />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* ⚠️ 404 Not Found */}
+        {/* 404 Not Found */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

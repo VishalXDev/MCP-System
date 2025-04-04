@@ -11,12 +11,10 @@ import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
 import { getSocketIO } from "../socket.io/index.js";
 
-const router = express.Router();
-
 // 📌 Route to create an order (with validation)
 router.post(
   "/",
-  protect,  
+  protect,
   [
     check("productId", "Product ID is required").not().isEmpty(),
     check("quantity", "Quantity should be a positive number").isInt({ gt: 0 }),
@@ -26,7 +24,7 @@ router.post(
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
-    
+
     createOrder(req, res);
   }
 );
@@ -76,19 +74,22 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
         const { status } = req.body;
         const order = await Order.findById(req.params.orderId);
         if (!order) return res.status(404).json({ error: "Order not found" });
-    
+
         order.status = status;
         await order.save();
-    
+
         // Send notification to the assigned pickup partner
-        sendNotification(order.pickupPartnerId, `Order ${order._id} status updated to ${status}`);
-    
+        sendNotification(
+          order.pickupPartnerId,
+          `Order ${order._id} status updated to ${status}`
+        );
+
         res.json({ message: "Order status updated successfully" });
       } catch (error) {
         res.status(500).json({ error: "Failed to update order status" });
       }
     });
-    
+
     // Emit the updated location to the assigned partner via Socket.IO
     if (order.assignedTo) {
       getSocketIO()
@@ -108,5 +109,22 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     });
   }
 });
+const express = require("express");
+const router = express.Router();
+const {
+  createOrder,
+  getOrders,
+  assignOrder,
+  updateStatus,
+} = require("../controllers/orderController");
+
+const auth = require("../middleware/auth");
+
+router.post("/", auth, createOrder);
+router.get("/", auth, getOrders);
+router.put("/:id/assign", auth, assignOrder);
+router.put("/:id/status", auth, updateStatus);
+
+module.exports = router;
 
 export default router;

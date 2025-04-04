@@ -2,25 +2,30 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
-    orderId: { type: String, required: true, unique: true }, // Unique Order ID
+    orderId: { 
+      type: String, 
+      required: true, 
+      unique: true 
+    },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "PickupPartner",
+      ref: "User", // Changed to "User" to match your second schema
       default: null,
-    }, // Assigned Partner
+    },
     status: {
       type: String,
-      enum: ["Pending", "In Progress", "Completed"],
-      default: "Pending",
+      enum: ["pending", "accepted", "completed", "in_progress"], // Combined statuses
+      default: "pending",
     },
     pickupLocation: { type: String, required: true },
     dropoffLocation: { type: String, required: true },
-    weight: { type: Number, required: true }, // Weight of waste in KG
-    earnings: { type: Number, required: true }, // Payment for the partner
-    latitude: { type: Number, required: true }, // Latitude for location tracking
-    longitude: { type: Number, required: true }, // Longitude for location tracking
+    location: String, // Keeping your simpler location field as fallback
+    weight: { type: Number, required: true },
+    earnings: { type: Number, required: true },
+    latitude: { type: Number }, // Made optional since you have location string
+    longitude: { type: Number }, // Made optional
   },
-  { timestamps: true }
+  { timestamps: true } // This handles createdAt automatically
 );
 
 const Order = mongoose.model("Order", orderSchema);

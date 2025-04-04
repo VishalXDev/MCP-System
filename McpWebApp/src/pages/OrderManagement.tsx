@@ -1,163 +1,115 @@
 import React, { useState, useEffect } from "react";
-import { db } from "../firebase/firebaseConfig";
-import { collection, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import API from "../utils/axios.ts";
 
-// Define Order Type
+// Types
 interface Order {
-  id: string;
-  customer: string;
-  amount: number;
-  status: "Pending" | "Completed" | "Cancelled";
+  _id: string;
+  status: "pending" | "assigned" | "picked" | "delivered";
+  address: string;
   assignedTo?: string;
+  createdAt: string;
 }
 
-// Define Pickup Partner Type
-interface PickupPartner {
-  id: string;
+interface Partner {
+  _id: string;
   name: string;
-  role: string; // Fix for 'role' does not exist error
+  role: "partner";
 }
 
-const OrderManagement = () => {
+// Component
+const OrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [pickupPartners, setPickupPartners] = useState<PickupPartner[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [partners, setPartners] = useState<Partner[]>([]);
 
-  // Fetch Orders
+  // Fetch Orders and Partners
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       try {
-        const ordersRef = collection(db, "orders");
-        const ordersSnap = await getDocs(ordersRef);
-        const ordersList = ordersSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Order[];
-        setOrders(ordersList);
+        const orderRes = await API.get("/orders");
+        const userRes = await API.get("/users");
+        const filteredPartners = userRes.data.filter(
+          (u: Partner) => u.role === "partner"
+        );
+
+        setOrders(orderRes.data);
+        setPartners(filteredPartners);
       } catch (err) {
-        console.error("Error fetching orders:", err);
-        setError("Failed to load orders.");
+        console.error("Error fetching data:", err);
       }
     };
 
-    // Fetch Pickup Partners
-    const fetchPickupPartners = async () => {
-      try {
-        const partnersRef = collection(db, "users"); // Assuming pickup partners are in 'users'
-        const partnersSnap = await getDocs(partnersRef);
-        const partnersList: PickupPartner[] = partnersSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() } as PickupPartner)) // Fix for role error
-          .filter((user) => user.role === "pickup-partner"); // Only get partners
-
-        setPickupPartners(partnersList);
-      } catch (err) {
-        console.error("Error fetching pickup partners:", err);
-      }
-    };
-
-    fetchOrders();
-    fetchPickupPartners();
-    setLoading(false);
+    fetchData();
   }, []);
 
-  // Update Order Status
-  const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
+  // Assign Partner
+  const handleAssign = async (orderId: string, partnerId: string) => {
     try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { status: newStatus });
-
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
+      await API.put(`/orders/${orderId}/assign`, { assignedTo: partnerId });
+      const updated = await API.get("/orders");
+      setOrders(updated.data);
     } catch (err) {
-      console.error("Error updating order status:", err);
+      console.error("Error assigning partner:", err);
     }
   };
 
-  // Assign Pickup Partner
-  const assignPickupPartner = async (orderId: string, partnerId: string) => {
+  // Update Status
+  const handleStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
     try {
-      const orderRef = doc(db, "orders", orderId);
-      await updateDoc(orderRef, { assignedTo: partnerId });
-
-      // Update UI
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? { ...order, assignedTo: partnerId } : order
-        )
-      );
+      await API.put(`/orders/${orderId}`, { status: newStatus });
+      const updated = await API.get("/orders");
+      setOrders(updated.data);
     } catch (err) {
-      console.error("Error assigning pickup partner:", err);
+      console.error("Error updating status:", err);
     }
   };
-
-  // Delete Order
-  const deleteOrder = async (orderId: string) => {
-    try {
-      await deleteDoc(doc(db, "orders", orderId));
-      setOrders((prevOrders) => prevOrders.filter((order) => order.id !== orderId));
-    } catch (err) {
-      console.error("Error deleting order:", err);
-    }
-  };
-
-  if (loading) return <p>Loading orders...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Order Management</h1>
-      <table className="w-full border-collapse border border-gray-300">
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Order Management</h1>
+
+      <table className="w-full bg-white rounded shadow">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-3 text-left">Customer</th>
-            <th className="border p-3 text-left">Amount</th>
-            <th className="border p-3 text-left">Status</th>
-            <th className="border p-3 text-left">Pickup Partner</th>
-            <th className="border p-3 text-left">Actions</th>
+          <tr className="text-left border-b">
+            <th>Address</th>
+            <th>Status</th>
+            <th>Assigned To</th>
+            <th>Assign</th>
+            <th>Update Status</th>
           </tr>
         </thead>
         <tbody>
           {orders.map((order) => (
-            <tr key={order.id} className="border">
-              <td className="border p-3">{order.customer}</td>
-              <td className="border p-3">₹{order.amount.toLocaleString()}</td>
-              <td className="border p-3">
-                <select
-                  value={order.status}
-                  onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
-                  className="p-1 border rounded"
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
+            <tr key={order._id} className="border-t">
+              <td>{order.address}</td>
+              <td>{order.status}</td>
+              <td>
+                {partners.find((p) => p._id === order.assignedTo)?.name || "Unassigned"}
               </td>
-              {/* Assign Pickup Partner Dropdown */}
-              <td className="border p-3">
+              <td>
                 <select
+                  onChange={(e) => handleAssign(order._id, e.target.value)}
                   value={order.assignedTo || ""}
-                  onChange={(e) => assignPickupPartner(order.id, e.target.value)}
-                  className="p-1 border rounded"
+                  className="border p-1"
                 >
-                  <option value="">Unassigned</option>
-                  {pickupPartners.map((partner) => (
-                    <option key={partner.id} value={partner.id}>
-                      {partner.name}
+                  <option value="">Select</option>
+                  {partners.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
               </td>
-              <td className="border p-3">
-                <button
-                  onClick={() => deleteOrder(order.id)}
-                  className="px-4 py-2 bg-red-500 text-white rounded"
+              <td>
+                <select
+                  onChange={(e) => handleStatusUpdate(order._id, e.target.value as Order["status"])}
+                  value={order.status}
+                  className="border p-1"
                 >
-                  Delete
-                </button>
+                  <option value="pending">Pending</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="picked">Picked</option>
+                  <option value="delivered">Delivered</option>
+                </select>
               </td>
             </tr>
           ))}

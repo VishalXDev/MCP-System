@@ -2,7 +2,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import PickupPartner from "../models/PickupPartner.js";
 import User from "../models/user.js";
-import Transaction from "../models/transaction.js";
+import Transaction from "../models/Transaction.js";
 import { getSocketIO } from "../socket.io/index.js";
 import razorpayInstance from "../config/razorpay.js"; // Ensure you have this file
 
