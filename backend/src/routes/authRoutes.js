@@ -2,9 +2,9 @@ import express from "express";
 import { body } from "express-validator";
 import { signup, login } from "../controllers/authController.js";
 import { updateUser, deleteUser } from "../controllers/userController.js";
-import { protect } from "../middleware/authMiddleware.js"; // Middleware to protect routes
+import { protect } from "../middleware/authMiddleware.js";
 
-const router = express.Router(); // ✅ Initialize router correctly
+const router = express.Router();
 
 // Signup Route
 router.post(
@@ -33,11 +33,10 @@ router.post(
   login
 );
 
-// Update user details (Protected Route)
+// Update user details (Protected)
 router.put("/update/:id", protect, updateUser);
 
-// Delete user (Protected Route)
+// Delete user (Protected)
 router.delete("/delete/:id", protect, deleteUser);
-import { signup, login } from "../controllers/authController.js";
 
-export default router; // ✅ Export correctly
+export default router;

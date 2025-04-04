@@ -3,35 +3,103 @@ import PickupPartner from "../models/PickupPartner.js";
 import { getSocketIO } from "../socket.io/index.js";
 import Notification from "../models/Notification.js";
 
-// 📌 Update Order Status & Process Payment
+// 📌 Create a New Order
+export const createOrder = async (req, res) => {
+  try {
+    const { partnerId, userId, totalAmount, orderDetails, location } = req.body;
+
+    if (!location && (!partnerId || !userId || !orderDetails || typeof totalAmount !== "number")) {
+      return res.status(400).json({ message: "Invalid or missing required fields" });
+    }
+
+    const order = await Order.create({
+      partnerId,
+      userId,
+      totalAmount,
+      orderDetails,
+      location,
+      status: "pending",
+    });
+
+    res.status(201).json({ message: "Order created successfully", order });
+  } catch (error) {
+    res.status(500).json({ message: "Error creating order", error: error.message });
+  }
+};
+
+// 📌 Get All Orders
+export const getOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().populate("assignedTo", "name email");
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 📌 Assign an Order to a Partner
+export const assignOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { partnerId } = req.body;
+
+    const partner = await PickupPartner.findById(partnerId);
+    if (!partner) return res.status(404).json({ message: "Pickup Partner not found" });
+
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { assignedTo: partnerId, status: "Pending" },
+      { new: true }
+    );
+
+    partner.assignedOrders.push(order._id);
+    await partner.save();
+
+    getSocketIO().to(`partner_${partnerId}`).emit("newOrder", {
+      message: "You have a new order assigned!",
+      order,
+    });
+
+    res.json(order);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// 📌 Update Order Status
+export const updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
+    res.json(order);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// 📌 Update Order Status with Authorization + Wallet Handling
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId, status } = req.body;
-
-    // Validate status
     const validStatuses = ["In Progress", "Completed", "Pending", "Cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status update" });
     }
 
-    // Find the order
     const order = await Order.findById(orderId).populate("assignedTo", "_id");
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    // Validate if the current user is authorized to update the order
     if (
       !order.assignedTo ||
       order.assignedTo._id.toString() !== req.user._id.toString()
     ) {
-      return res
-        .status(403)
-        .json({ message: "Unauthorized to update this order" });
+      return res.status(403).json({ message: "Unauthorized to update this order" });
     }
 
-    // Update order status
     order.status = status;
 
-    // Process payment and wallet update if order is completed
     if (status === "Completed") {
       const partner = await PickupPartner.findById(order.assignedTo._id);
       if (partner) {
@@ -47,10 +115,8 @@ export const updateOrderStatus = async (req, res) => {
       }
     }
 
-    // Save order status update
     await order.save();
 
-    // Create notification for partner
     await Notification.create({
       userId: order.assignedTo._id,
       title: "Order Status Updated",
@@ -58,7 +124,6 @@ export const updateOrderStatus = async (req, res) => {
       type: "order",
     });
 
-    // Emit real-time notification via Socket.IO
     getSocketIO()
       .to(`partner_${order.assignedTo._id}`)
       .emit("orderStatusUpdate", {
@@ -67,13 +132,9 @@ export const updateOrderStatus = async (req, res) => {
         message: `Order ${orderId} is now ${status}`,
       });
 
-    res
-      .status(200)
-      .json({ message: "Order status updated successfully", order });
+    res.status(200).json({ message: "Order status updated successfully", order });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error updating order status", error: error.message });
+    res.status(500).json({ message: "Error updating order status", error: error.message });
   }
 };
 
@@ -81,66 +142,14 @@ export const updateOrderStatus = async (req, res) => {
 export const getWalletDetails = async (req, res) => {
   try {
     const partner = await PickupPartner.findById(req.user._id);
-    if (!partner)
-      return res.status(404).json({ message: "Pickup Partner not found" });
+    if (!partner) return res.status(404).json({ message: "Pickup Partner not found" });
 
     res.status(200).json({
       walletBalance: partner.walletBalance,
-      transactions: partner.transactions || [], // Default to empty array if undefined
+      transactions: partner.transactions || [],
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching wallet details", error: error.message });
-  }
-};
-
-// 📌 Assign Order and Notify Partner
-export const assignOrder = async (req, res) => {
-  try {
-    const { pickupLocation, dropoffLocation, weight, earnings, partnerId } =
-      req.body;
-
-    // Validate required fields
-    if (
-      !pickupLocation ||
-      !dropoffLocation ||
-      !weight ||
-      !earnings ||
-      !partnerId
-    ) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    const partner = await PickupPartner.findById(partnerId);
-    if (!partner)
-      return res.status(404).json({ message: "Pickup Partner not found" });
-
-    const orderId = `ORD-${Date.now()}`;
-    const newOrder = await Order.create({
-      orderId,
-      pickupLocation,
-      dropoffLocation,
-      weight,
-      earnings,
-      assignedTo: partnerId,
-      status: "Pending",
-    });
-
-    partner.assignedOrders.push(newOrder._id);
-    await partner.save();
-
-    // Emit real-time notification to partner
-    getSocketIO().to(`partner_${partnerId}`).emit("newOrder", {
-      message: "You have a new order assigned!",
-      order: newOrder,
-    });
-
-    res.status(201).json({ message: "Order assigned successfully!", newOrder });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error assigning order", error: error.message });
+    res.status(500).json({ message: "Error fetching wallet details", error: error.message });
   }
 };
 
@@ -160,45 +169,7 @@ export const getOrderDetails = async (req, res) => {
 
     res.status(200).json(order);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching order details", error: error.message });
-  }
-};
-
-// 📌 Create a New Order
-export const createOrder = async (req, res) => {
-  try {
-    const { partnerId, userId, totalAmount, orderDetails } = req.body;
-
-    if (
-      !partnerId ||
-      !userId ||
-      !orderDetails ||
-      typeof totalAmount !== "number"
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Invalid or missing required fields" });
-    }
-
-    const newOrder = new Order({
-      partnerId,
-      userId,
-      totalAmount,
-      orderDetails,
-      status: "pending", // Default status
-    });
-
-    await newOrder.save();
-
-    res
-      .status(201)
-      .json({ message: "Order created successfully", order: newOrder });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error creating order", error: error.message });
+    res.status(500).json({ message: "Error fetching order details", error: error.message });
   }
 };
 
@@ -220,58 +191,6 @@ export const trackOrder = async (req, res) => {
       dropoffLocation: order.dropoffLocation,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error tracking order", error: error.message });
-  }
-};
-const Order = require("../models/Order");
-
-// Create a new order
-exports.createOrder = async (req, res) => {
-  try {
-    const { location } = req.body;
-    const order = await Order.create({ location });
-    res.status(201).json(order);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-// Get all orders
-exports.getOrders = async (req, res) => {
-  try {
-    const orders = await Order.find().populate("assignedTo", "name email");
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Assign an order to a partner
-exports.assignOrder = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { partnerId } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { assignedTo: partnerId },
-      { new: true }
-    );
-    res.json(order);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
-};
-
-// Update order status
-exports.updateStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true });
-    res.json(order);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(500).json({ message: "Error tracking order", error: error.message });
   }
 };

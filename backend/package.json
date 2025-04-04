@@ -5,7 +5,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js/app.js",
+    "start": "node src/app.js",
     "dev": "nodemon --exec babel-node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -35,6 +35,9 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.26.10",
+    "@babel/node": "^7.26.0",
+    "@babel/preset-env": "^7.26.9",
     "babel-cli": "^6.26.0",
     "nodemon": "^3.1.9"
   }

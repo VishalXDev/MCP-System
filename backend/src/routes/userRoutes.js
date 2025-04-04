@@ -1,23 +1,24 @@
 import express from "express";
-import { updateUser, deleteUser } from "../controllers/userController.js";
-import { protect } from "../middleware/authMiddleware.js";
-
-router.put("/:id", protect, updateUser); // Update user
-router.delete("/:id", protect, deleteUser); // Delete user
-const express = require("express");
-const router = express.Router();
-const {
+import {
   getAllUsers,
   addPartner,
+  updateUser,
   deleteUser,
-} = require("../controllers/userController");
+} from "../controllers/userController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
-const auth = require("../middleware/auth");
+const router = express.Router();
 
-router.get("/", auth, getAllUsers);
-router.post("/partner", auth, addPartner);
-router.delete("/:id", auth, deleteUser);
+// Get all users
+router.get("/", protect, getAllUsers);
 
-module.exports = router;
+// Add new partner
+router.post("/partner", protect, addPartner);
+
+// Update user
+router.put("/:id", protect, updateUser);
+
+// Delete user
+router.delete("/:id", protect, deleteUser);
 
 export default router;

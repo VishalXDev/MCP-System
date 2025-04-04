@@ -26,7 +26,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ NOW import middleware after app initialization
+// ✅ Import middleware
 import apiLimiter from "./src/middleware/rateLimiter.js";
 import cacheMiddleware from "./src/middleware/cacheMiddleware.js";
 
@@ -34,7 +34,7 @@ import cacheMiddleware from "./src/middleware/cacheMiddleware.js";
 app.use("/api/auth", apiLimiter);
 app.use(cacheMiddleware);
 
-// ✅ Import routes AFTER app is declared
+// ✅ Import routes
 import authRoutes from "./src/routes/authRoutes.js";
 import mcpRoutes from "./src/routes/mcpRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
@@ -60,10 +60,10 @@ const redis = new Redis(process.env.REDIS_URL, {
 redis.on("connect", () => {
   console.log("✅ Redis Connected!");
 });
-
 redis.on("error", (err) => {
   console.error("❌ Redis Error:", err);
 });
+
 // ✅ Initialize Socket.IO
 const io = new Server(server, {
   cors: {

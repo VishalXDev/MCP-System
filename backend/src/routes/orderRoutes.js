@@ -1,4 +1,3 @@
-const { sendNotification } = require("../socket.js");
 import express from "express";
 import { check, validationResult } from "express-validator";
 import {
@@ -6,12 +5,18 @@ import {
   updateOrderStatus,
   getOrderDetails,
   trackOrder,
+  getOrders,
+  assignOrder,
+  updateStatus,
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
 import { getSocketIO } from "../socket.io/index.js";
+import { sendNotification } from "../socket.js";
 
-// 📌 Route to create an order (with validation)
+const router = express.Router();
+
+// 📌 Create an order with validation
 router.post(
   "/",
   protect,
@@ -29,37 +34,33 @@ router.post(
   }
 );
 
-// 📌 Route to update order status
+// 📌 Update order status
 router.put("/update-status", protect, updateOrderStatus);
 
-// 📌 Route to get order details
+// 📌 Get order details
 router.get("/:orderId", protect, getOrderDetails);
 
-// 📌 Route to track an order
+// 📌 Track an order
 router.get("/track/:orderId", protect, trackOrder);
 
-// 📌 Route to fetch all orders
-router.get("/", protect, async (req, res) => {
-  try {
-    const orders = await Order.find();
-    res.status(200).json(orders);
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+// 📌 Get all orders
+router.get("/", protect, getOrders);
 
-// 📌 Route to update order location
+// 📌 Assign order to partner
+router.put("/:id/assign", protect, assignOrder);
+
+// 📌 Update order status (by ID)
+router.put("/:id/status", protect, updateStatus);
+
+// 📌 Update order location
 router.put("/updateLocation/:orderId", protect, async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
 
-    // Validate latitude and longitude
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       return res.status(400).json({ message: "Invalid location data" });
     }
 
-    // Find and update the order with new location
     const order = await Order.findByIdAndUpdate(
       req.params.orderId,
       { latitude, longitude },
@@ -69,28 +70,8 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    router.put("/:orderId/status", authMiddleware, async (req, res) => {
-      try {
-        const { status } = req.body;
-        const order = await Order.findById(req.params.orderId);
-        if (!order) return res.status(404).json({ error: "Order not found" });
 
-        order.status = status;
-        await order.save();
-
-        // Send notification to the assigned pickup partner
-        sendNotification(
-          order.pickupPartnerId,
-          `Order ${order._id} status updated to ${status}`
-        );
-
-        res.json({ message: "Order status updated successfully" });
-      } catch (error) {
-        res.status(500).json({ error: "Failed to update order status" });
-      }
-    });
-
-    // Emit the updated location to the assigned partner via Socket.IO
+    // Notify assigned pickup partner via socket
     if (order.assignedTo) {
       getSocketIO()
         .to(`partner_${order.assignedTo._id}`)
@@ -109,22 +90,5 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     });
   }
 });
-const express = require("express");
-const router = express.Router();
-const {
-  createOrder,
-  getOrders,
-  assignOrder,
-  updateStatus,
-} = require("../controllers/orderController");
-
-const auth = require("../middleware/auth");
-
-router.post("/", auth, createOrder);
-router.get("/", auth, getOrders);
-router.put("/:id/assign", auth, assignOrder);
-router.put("/:id/status", auth, updateStatus);
-
-module.exports = router;
 
 export default router;

@@ -1,4 +1,5 @@
-const { Server } = require("socket.io");
+// backend/src/socket.js
+import { Server } from "socket.io";
 
 let io;
 const connectedUsers = new Map();
@@ -14,7 +15,6 @@ const initializeSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("User connected:", socket.id);
 
-    // Store connected user with their userId
     socket.on("register", (userId) => {
       connectedUsers.set(userId, socket.id);
     });
@@ -35,4 +35,4 @@ const sendNotification = (userId, message) => {
   }
 };
 
-module.exports = { initializeSocket, sendNotification };
+export { initializeSocket, sendNotification };
