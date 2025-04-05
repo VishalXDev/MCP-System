@@ -8,7 +8,8 @@ export const updateOrderStatus = async (req, res) => {
     const { status } = req.body;
 
     // Validate status
-    if (!["In Progress", "Completed"].includes(status)) {
+    const allowedStatuses = ["In Progress", "Completed"];
+    if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status update" });
     }
 
@@ -19,30 +20,37 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: "Order is not assigned to any partner" });
     }
 
-    // Ensure the right partner updates the order
+    // Ensure the logged-in partner is authorized
     if (order.assignedTo._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Unauthorized to update this order" });
     }
 
     order.status = status;
 
-    // If order is completed, process payment
+    // If Completed, credit earnings to partner wallet
     if (status === "Completed") {
       const partner = await PickupPartner.findById(order.assignedTo._id);
       if (partner) {
-        const earnings = order.earnings || 0; // Ensure earnings exist
+        const earnings = order.earnings || 0;
         partner.walletBalance += earnings;
+
         partner.transactions.push({
           amount: earnings,
           type: "credit",
-          description: `Payment for Order ${order._id}`,
+          description: `Earnings for Order ${order._id}`,
+          date: new Date(),
         });
+
         await partner.save();
       }
     }
 
     await order.save();
-    res.status(200).json({ message: "Order status updated successfully", order });
+
+    res.status(200).json({
+      message: `Order status updated to '${status}' successfully`,
+      order,
+    });
   } catch (error) {
     res.status(500).json({ message: `Error updating order status: ${error.message}` });
   }
@@ -52,13 +60,50 @@ export const updateOrderStatus = async (req, res) => {
 export const getWalletDetails = async (req, res) => {
   try {
     const partner = await PickupPartner.findById(req.user._id);
-    if (!partner) return res.status(404).json({ message: "Pickup Partner not found" });
+    if (!partner) {
+      return res.status(404).json({ message: "Pickup Partner not found" });
+    }
 
     res.status(200).json({
       walletBalance: partner.walletBalance,
-      transactions: partner.transactions,
+      transactions: partner.transactions || [],
     });
   } catch (error) {
     res.status(500).json({ message: `Error fetching wallet details: ${error.message}` });
+  }
+};
+// Get partner performance (completed orders count)
+export const getPartnerPerformance = async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      { $match: { status: "completed" } },
+      {
+        $group: {
+          _id: "$assignedTo",
+          completedOrders: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "users", // or 'partners' depending on your schema
+          localField: "_id",
+          foreignField: "_id",
+          as: "partnerInfo",
+        },
+      },
+      {
+        $unwind: "$partnerInfo",
+      },
+      {
+        $project: {
+          partner: "$partnerInfo.name",
+          completedOrders: 1,
+        },
+      },
+    ]);
+
+    res.status(200).json(stats);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch partner performance", error: err.message });
   }
 };

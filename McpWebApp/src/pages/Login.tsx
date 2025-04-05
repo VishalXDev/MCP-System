@@ -1,13 +1,9 @@
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { FirebaseError } from "firebase/app";
-import { auth, db } from "../firebase/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import API from "../utils/axios.ts";
-import axios from "axios";
 import { setAuthToken } from "../utils/auth.ts";
+import axios from "axios";
 
 type LoginCredentials = {
   email: string;
@@ -17,23 +13,6 @@ type LoginCredentials = {
 type UserRole = "admin" | "pickup-partner" | "staff";
 
 const getErrorMessage = (error: unknown): string => {
-  if (error instanceof FirebaseError) {
-    switch (error.code) {
-      case "auth/invalid-email":
-        return "Invalid email address";
-      case "auth/user-disabled":
-        return "Account disabled";
-      case "auth/user-not-found":
-        return "No account found with this email";
-      case "auth/wrong-password":
-        return "Incorrect password";
-      case "auth/too-many-requests":
-        return "Too many attempts. Try again later";
-      default:
-        console.warn("Unhandled Firebase error:", error.code);
-        return "Authentication failed. Please try again.";
-    }
-  }
   if (axios.isAxiosError(error)) {
     return error.response?.data?.message || "API request failed";
   }
@@ -49,7 +28,6 @@ const Login = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [authMethod, setAuthMethod] = useState<"firebase" | "api">("api");
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,67 +51,22 @@ const Login = () => {
     return true;
   };
 
-  const handleFirebaseLogin = async () => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        credentials.email,
-        credentials.password
-      );
-
-      const user = userCredential.user;
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-
-      if (!userDoc.exists()) {
-        throw new Error("User account not found");
-      }
-
-      const userData = userDoc.data();
-      const role = userData?.role as UserRole;
-
-      const routes: Record<UserRole, string> = {
-        admin: "/admin-dashboard",
-        "pickup-partner": "/partner-dashboard",
-        staff: "/dashboard",
-      };
-
-      navigate(routes[role] || "/dashboard");
-    } catch (err: unknown) {
-      console.error("Login error:", err);
-      setError(getErrorMessage(err));
-    }
-  };
-
-  const handleApiLogin = async () => {
-    try {
-      const res = await API.post("/auth/login", credentials);
-      setAuthToken(res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      
-      const role = res.data.user?.role as UserRole | undefined;
-      navigate(role === "admin" ? "/admin" : "/dashboard");
-    } catch (err: unknown) {
-      console.error("API error:", err);
-      setError(getErrorMessage(err));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
     if (!validateInputs()) return;
 
     setLoading(true);
 
     try {
-      if (authMethod === "firebase") {
-        await handleFirebaseLogin();
-      } else {
-        await handleApiLogin();
-      }
+      const res = await API.post("/auth/login", credentials);
+      setAuthToken(res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
+      const role = res.data.user?.role as UserRole;
+      navigate(role === "admin" ? "/admin" : "/dashboard");
     } catch (err: unknown) {
-      console.error("Unexpected error:", err);
+      console.error("Login failed:", err);
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -152,29 +85,8 @@ const Login = () => {
         className="bg-white p-8 rounded-lg shadow-md w-full max-w-md"
       >
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">
-          {authMethod === "firebase" ? "Firebase Login" : "API Login"}
+          MCP Admin Login
         </h1>
-
-        <div className="flex justify-center mb-6">
-          <button
-            type="button"
-            onClick={() => setAuthMethod("api")}
-            className={`px-4 py-2 rounded-l-lg ${
-              authMethod === "api" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-          >
-            API Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthMethod("firebase")}
-            className={`px-4 py-2 rounded-r-lg ${
-              authMethod === "firebase" ? "bg-blue-600 text-white" : "bg-gray-200"
-            }`}
-          >
-            Firebase Login
-          </button>
-        </div>
 
         {error && (
           <motion.div
@@ -186,7 +98,7 @@ const Login = () => {
           </motion.div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleLogin}>
           <div className="mb-4">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address
@@ -197,7 +109,7 @@ const Login = () => {
               name="email"
               value={credentials.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
               required
             />
           </div>
@@ -212,7 +124,7 @@ const Login = () => {
               name="password"
               value={credentials.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
               required
               minLength={6}
             />

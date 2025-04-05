@@ -14,5 +14,7 @@ router.put("/update-order/:orderId", protect, isPickupPartner, updateOrderStatus
 
 // Wallet Details
 router.get("/wallet", protect, isPickupPartner, getWalletDetails);
+import { getPartnerPerformance } from "../controllers/pickupPartnerController.js";
+router.get("/performance", getPartnerPerformance);
 
 export default router;

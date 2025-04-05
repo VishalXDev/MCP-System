@@ -1,5 +1,5 @@
 import express from "express";
-import { check, validationResult } from "express-validator";
+import { check } from "express-validator";
 import {
   createOrder,
   updateOrderStatus,
@@ -11,27 +11,20 @@ import {
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
-import { getSocketIO } from "../socket.io/index.js"; // if you use this anywhere else
-import { sendNotification } from "../socket.js"; // ✅ now properly exported from socket.js
+import { getSocketIO } from "../socket.io/index.js";
+import { sendNotification } from "../socket.js";
 
 const router = express.Router();
 
-// 📌 Create an order with validation
+// 📌 Create Order
 router.post(
   "/",
   protect,
   [
-    check("productId", "Product ID is required").not().isEmpty(),
-    check("quantity", "Quantity should be a positive number").isInt({ gt: 0 }),
+    check("productId").notEmpty().withMessage("Product ID is required"),
+    check("quantity").isInt({ gt: 0 }).withMessage("Quantity must be positive"),
   ],
-  async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    createOrder(req, res);
-  }
+  createOrder
 );
 
 // 📌 Update order status
@@ -40,7 +33,7 @@ router.put("/update-status", protect, updateOrderStatus);
 // 📌 Get order details
 router.get("/:orderId", protect, getOrderDetails);
 
-// 📌 Track an order
+// 📌 Track order
 router.get("/track/:orderId", protect, trackOrder);
 
 // 📌 Get all orders
@@ -71,18 +64,14 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // ✅ Optional: notify partner with socket
     if (order.assignedTo) {
       const partnerId = order.assignedTo._id?.toString() || order.assignedTo;
-      getSocketIO()
-        .to(`partner_${partnerId}`)
-        .emit("orderLocationUpdated", {
-          orderId: order._id,
-          latitude,
-          longitude,
-        });
+      getSocketIO().to(`partner_${partnerId}`).emit("orderLocationUpdated", {
+        orderId: order._id,
+        latitude,
+        longitude,
+      });
 
-      // Optionally also use sendNotification
       sendNotification(partnerId, {
         type: "locationUpdate",
         orderId: order._id,
@@ -99,5 +88,7 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     });
   }
 });
+import { getOrderStats } from "../controllers/orderController.js";
+router.get("/stats", getOrderStats);
 
 export default router;

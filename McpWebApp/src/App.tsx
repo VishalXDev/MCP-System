@@ -1,6 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { io, Socket } from "socket.io-client";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Pages
 import Login from "./pages/Login";
@@ -10,8 +12,8 @@ import UserManagement from "./pages/UserManagement";
 import OrderManagement from "./pages/OrderManagement";
 import OrderDetails from "./pages/OrderDetails";
 import NotFound from "./pages/NotFound";
-import WalletPage from "./pages/Wallet";         // ✅ Make sure this path is correct
-import ReportsPage from "./pages/Reports";       // ✅ Make sure this path is correct
+import WalletPage from "./pages/Wallet";
+import ReportsPage from "./pages/Reports";
 
 // Components
 import AdminDashboard from "./components/AdminControls";
@@ -33,7 +35,7 @@ const socket: Socket = io("http://localhost:5000");
 function App() {
   useEffect(() => {
     socket.on("notification", (message: string) => {
-      alert(message); // Replace with toast if needed
+      toast.info(message || "📢 New Notification!");
     });
 
     return () => {
@@ -43,6 +45,7 @@ function App() {
 
   return (
     <AuthProvider>
+      <ToastContainer position="top-right" autoClose={4000} />
       <Notifications />
       <Routes>
         {/* Public Routes */}
@@ -50,7 +53,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Protected Routes (User + Admin) */}
+        {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
@@ -107,8 +110,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Admin-Only Routes */}
         <Route
           path="/admin-dashboard"
           element={

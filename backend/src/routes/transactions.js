@@ -1,13 +1,13 @@
-const express = require("express");
-const router = express.Router();
-const {
+import express from "express";
+import {
   getTransactions,
   addTransaction,
-} = require("../controllers/transactionController");
+} from "../controllers/transactionController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
-const auth = require("../middleware/auth");
+const router = express.Router();
 
-router.get("/:userId", auth, getTransactions);
-router.post("/", auth, addTransaction);
+router.get("/:userId", protect, getTransactions);
+router.post("/", protect, addTransaction);
 
-module.exports = router;
+export default router;

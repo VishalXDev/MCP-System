@@ -4,9 +4,9 @@ import PickupPartner from "../models/PickupPartner.js";
 import User from "../models/user.js";
 import Transaction from "../models/Transaction.js";
 import { getSocketIO } from "../socket.io/index.js";
-import razorpayInstance from "../config/razorpay.js"; // Ensure you have this file
+import razorpayInstance from "../config/razorpay.js"; // Ensure this file exports a configured Razorpay instance
 
-// 📌 Add Funds to Wallet
+// 📌 Add Funds to Wallet (Admin manually adds to Pickup Partner)
 export const addFundsToWallet = async (req, res) => {
   try {
     const { partnerId, amount } = req.body;
@@ -42,7 +42,7 @@ export const addFundsToWallet = async (req, res) => {
   }
 };
 
-// 📌 Verify Payment & Update Wallet
+// 📌 Verify Payment & Update User Wallet
 export const verifyPayment = async (req, res) => {
   try {
     const {
@@ -116,11 +116,29 @@ export const razorpayWebhookHandler = async (req, res) => {
   }
 };
 
-// 📌 Create Order
+// 📌 Create Razorpay Order (Frontend will use this before Razorpay Checkout)
 export const createOrder = async (req, res) => {
   try {
-    res.status(201).json({ message: "Order created successfully" });
+    const { amount, currency = "INR", receipt } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const options = {
+      amount: amount * 100, // Convert ₹ to paise
+      currency,
+      receipt: receipt || `receipt_order_${Date.now()}`,
+    };
+
+    const order = await razorpayInstance.orders.create(options);
+
+    res.status(201).json({
+      message: "Razorpay order created",
+      order,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error creating order", error: error.message });
+    console.error("Error in createOrder:", error);
+    res.status(500).json({ message: "Error creating Razorpay order", error: error.message });
   }
 };

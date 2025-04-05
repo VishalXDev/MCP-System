@@ -201,3 +201,28 @@ export const trackOrder = async (req, res) => {
     res.status(500).json({ message: "Error tracking order", error: error.message });
   }
 };
+// Get order stats (group by date)
+export const getOrderStats = async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          orders: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { _id: 1 }
+      },
+    ]);
+
+    const formatted = stats.map((s) => ({
+      date: s._id,
+      orders: s.orders,
+    }));
+
+    res.status(200).json(formatted);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch order stats", error: err.message });
+  }
+};

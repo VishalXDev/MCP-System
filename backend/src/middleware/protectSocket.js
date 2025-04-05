@@ -1,23 +1,24 @@
-// protectSocket.js
+// middleware/protectSocket.js
+import jwt from "jsonwebtoken";
 
 export const protectSocket = (socket, next) => {
-    const token = socket.handshake.query.token;  // Assuming the token is sent as a query parameter
-  
-    if (!token) {
-      console.log("Unauthorized connection attempt.");
-      return next(new Error("Unauthorized"));
-    }
-  
-    // Verify token (this example assumes JWT; you can modify based on your method of auth)
-    try {
-      const user = jwt.verify(token, process.env.JWT_SECRET);  // Assuming JWT and JWT_SECRET are set in .env
-  
-      // Attach user information to socket (optional)
-      socket.user = user;
-      next();
-    } catch (error) {
-      console.log("Invalid token.");
-      return next(new Error("Unauthorized"));
-    }
-  };
-  
+  const token = socket.handshake.query.token;
+
+  if (!token) {
+    console.log("❌ Unauthorized socket connection: No token");
+    return next(new Error("Unauthorized: Token missing"));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "supersecretkey");
+
+    // Attach user to socket instance for further use
+    socket.user = decoded;
+
+    console.log(`✅ Socket authenticated for user: ${decoded.id || decoded.email}`);
+    next();
+  } catch (error) {
+    console.log("❌ Invalid token on socket connection:", error.message);
+    return next(new Error("Unauthorized: Invalid token"));
+  }
+};

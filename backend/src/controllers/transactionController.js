@@ -1,8 +1,8 @@
-const Transaction = require("../models/Transaction");
-const User = require("../models/user");
+import Transaction from "../models/Transaction.js";
+import User from "../models/user.js";
 
-// Get all transactions for a user
-exports.getTransactions = async (req, res) => {
+// 📌 Get all transactions for a user
+export const getTransactions = async (req, res) => {
   try {
     const { userId } = req.params;
     const transactions = await Transaction.find({ userId }).sort({ createdAt: -1 });
@@ -12,8 +12,8 @@ exports.getTransactions = async (req, res) => {
   }
 };
 
-// Add a new transaction (credit/debit)
-exports.addTransaction = async (req, res) => {
+// 📌 Add a new transaction (credit/debit)
+export const addTransaction = async (req, res) => {
   try {
     const { userId, amount, type, description } = req.body;
 
@@ -22,7 +22,9 @@ exports.addTransaction = async (req, res) => {
 
     const newBalance =
       type === "credit" ? user.wallet + amount : user.wallet - amount;
-    if (newBalance < 0) return res.status(400).json({ error: "Insufficient balance" });
+
+    if (newBalance < 0)
+      return res.status(400).json({ error: "Insufficient balance" });
 
     user.wallet = newBalance;
     await user.save();

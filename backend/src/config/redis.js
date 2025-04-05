@@ -1,31 +1,18 @@
-// backend/src/config/redis.js
-import Redis from "ioredis";
-import dotenv from "dotenv";
+import { createClient } from "redis";
 
-dotenv.config();
-
-console.log(
-  "🔍 Connecting to Redis at",
-  process.env.REDIS_URL + ":" + process.env.REDIS_PORT
-);
-
-const redis = new Redis({
-  host: "redis-12388.c301.ap-south-1-1.ec2.redns.redis-cloud.com",
-  port: 12388,
-  username: "default",
-  password: "BTKJ2kD0ByWoyN1qdMACv8winE9YOMVN",
-  tls: {
-    rejectUnauthorized: false,
+const redisClient = createClient({
+  socket: {
+    host: process.env.REDIS_HOST || "localhost",
+    port: process.env.REDIS_PORT || 6379,
   },
-  connectTimeout: 10000,
 });
 
-redis.on("connect", () => {
-  console.log("✅ Redis Connected Successfully!");
+redisClient.on("error", (err) => {
+  console.error("❌ Redis Connection Error:", err.message);
 });
 
-redis.on("error", (err) => {
-  console.error("❌ Redis Connection Error:", err);
+redisClient.on("connect", () => {
+  console.log("✅ Redis Connected");
 });
 
-export default redis;
+export default redisClient;

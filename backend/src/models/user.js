@@ -49,7 +49,7 @@ const userSchema = new mongoose.Schema(
     },
     commissionRate: {
       type: Number,
-      default: 0.2, // 20% default commission
+      default: 0.2,
       min: [0, "Commission cannot be negative"],
       max: [1, "Commission cannot exceed 100%"]
     },
@@ -89,9 +89,7 @@ userSchema.virtual("formattedBalance").get(function() {
   return `₹${this.walletBalance.toFixed(2)}`;
 });
 
-// Indexes for better query performance
-userSchema.index({ email: 1 });
-userSchema.index({ phone: 1 });
+// Only needed indexes
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });
 
