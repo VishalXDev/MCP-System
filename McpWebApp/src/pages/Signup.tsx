@@ -28,11 +28,15 @@ const Signup = () => {
       const user = userCredential.user;
 
       await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        role: role || "user", // Ensure role is always set
         uid: user.uid,
+        email: user.email,
+        role: role || "user",
+        preferences: {
+          theme: "light",
+          notifications: true,
+        },
+        createdAt: new Date().toISOString(),
       });
-      
 
       navigate("/login");
     } catch (err) {
@@ -43,32 +47,35 @@ const Signup = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-900 text-white rounded-lg shadow-lg w-96 mx-auto mt-16">
-      <h2 className="text-xl font-bold text-center mb-4">Sign Up</h2>
-      {error && <p className="text-red-500 text-center">{error}</p>}
-      
+    <div className="p-6 bg-gray-900 text-white rounded-lg shadow-lg w-full max-w-md mx-auto mt-20">
+      <h2 className="text-2xl font-bold text-center mb-6">Create an Account</h2>
+
+      {error && (
+        <p className="text-red-500 text-center mb-4">{error}</p>
+      )}
+
       <input
         type="email"
         placeholder="Email"
-        className="p-3 rounded bg-gray-800 w-full my-2 focus:ring focus:ring-blue-500 outline-none"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        className="p-3 w-full rounded bg-gray-800 my-2 focus:ring focus:ring-blue-500 outline-none"
         disabled={loading}
       />
 
       <input
         type="password"
         placeholder="Password"
-        className="p-3 rounded bg-gray-800 w-full my-2 focus:ring focus:ring-blue-500 outline-none"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        className="p-3 w-full rounded bg-gray-800 my-2 focus:ring focus:ring-blue-500 outline-none"
         disabled={loading}
       />
 
       <select
-        className="p-3 rounded bg-gray-800 w-full my-2"
         value={role}
         onChange={(e) => setRole(e.target.value)}
+        className="p-3 w-full rounded bg-gray-800 my-2 text-white"
         disabled={loading}
       >
         <option value="user">User</option>
@@ -76,9 +83,11 @@ const Signup = () => {
       </select>
 
       <button
-        className={`w-full p-3 rounded font-bold ${loading ? "bg-gray-600" : "bg-green-500 hover:bg-green-600"}`}
         onClick={handleSignup}
         disabled={loading}
+        className={`w-full p-3 mt-4 rounded font-bold transition ${
+          loading ? "bg-gray-600 cursor-not-allowed" : "bg-green-500 hover:bg-green-600"
+        }`}
       >
         {loading ? "Signing up..." : "Sign Up"}
       </button>

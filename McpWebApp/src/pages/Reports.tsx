@@ -1,5 +1,20 @@
 import { useEffect, useState } from "react";
 import API from "../utils/axios.ts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 interface Order {
   _id: string;
@@ -17,25 +32,41 @@ interface Partner {
 export default function ReportsPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
-      const orderRes = await API.get("/orders");
-      const userRes = await API.get("/users");
-  
-      setOrders(orderRes.data);
-  
-      setPartners(
-        userRes.data.filter((u: { role: string }) => u.role === "partner")
-      );
+      try {
+        setLoading(true);
+        const [orderRes, userRes] = await Promise.all([
+          API.get("/orders"),
+          API.get("/users"),
+        ]);
+
+        setOrders(orderRes.data);
+        setPartners(
+          userRes.data.filter((u: { role: string }) => u.role === "partner")
+        );
+      } catch (err) {
+        setError("Failed to load reports data.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     };
     fetchData();
   }, []);
 
   const partnerStats = partners.map((p) => {
     const partnerOrders = orders.filter((o) => o.assignedTo === p._id);
-    const completed = partnerOrders.filter((o) => o.status === "delivered").length;
-    const totalEarnings = partnerOrders.reduce((sum, o) => sum + (o.status === "delivered" ? o.amount : 0), 0);
+    const completed = partnerOrders.filter(
+      (o) => o.status === "delivered"
+    ).length;
+    const totalEarnings = partnerOrders.reduce(
+      (sum, o) => sum + (o.status === "delivered" ? o.amount : 0),
+      0
+    );
 
     return {
       name: p.name,
@@ -44,10 +75,38 @@ export default function ReportsPage() {
     };
   });
 
+  const ordersByDate = Object.values(
+    orders.reduce((acc, o) => {
+      const date = new Date(o.createdAt).toLocaleDateString();
+      acc[date] = acc[date] || { date, orders: 0, revenue: 0 };
+      acc[date].orders += 1;
+      acc[date].revenue += o.amount;
+      return acc;
+    }, {} as Record<string, { date: string; orders: number; revenue: number }>)
+  );
+
+  const COLORS = [
+    "#0088FE",
+    "#00C49F",
+    "#FFBB28",
+    "#FF8042",
+    "#AA00FF",
+    "#FF4081",
+  ];
+
+  if (loading) {
+    return <div className="p-6">Loading reports...</div>;
+  }
+
+  if (error) {
+    return <div className="p-6 text-red-600">{error}</div>;
+  }
+
   return (
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Reports & Analytics</h1>
 
+      {/* Order History Table */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold text-lg mb-2">Order History</h2>
         <table className="w-full text-sm">
@@ -65,7 +124,10 @@ export default function ReportsPage() {
               <tr key={o._id} className="border-t">
                 <td>{o._id.slice(-6).toUpperCase()}</td>
                 <td>{o.status}</td>
-                <td>{partners.find((p) => p._id === o.assignedTo)?.name || "Unassigned"}</td>
+                <td>
+                  {partners.find((p) => p._id === o.assignedTo)?.name ||
+                    "Unassigned"}
+                </td>
                 <td>₹ {o.amount.toFixed(2)}</td>
                 <td>{new Date(o.createdAt).toLocaleDateString()}</td>
               </tr>
@@ -74,6 +136,7 @@ export default function ReportsPage() {
         </table>
       </div>
 
+      {/* Partner Performance Table */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold text-lg mb-2">Partner Performance</h2>
         <table className="w-full text-sm">
@@ -94,6 +157,57 @@ export default function ReportsPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Orders Over Time Line Chart */}
+      <div className="bg-white p-4 rounded shadow">
+        <h2 className="font-semibold text-lg mb-4">Orders Over Time</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={ordersByDate}>
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
+            <Line type="monotone" dataKey="orders" stroke="#8884d8" />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Revenue Over Time Bar Chart */}
+      <div className="bg-white p-4 rounded shadow">
+        <h2 className="font-semibold text-lg mb-4">Revenue Over Time</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={ordersByDate}>
+            <XAxis dataKey="date" />
+            <YAxis />
+            <Tooltip />
+            <CartesianGrid stroke="#eee" strokeDasharray="5 5" />
+            <Bar dataKey="revenue" fill="#82ca9d" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Partner Performance Pie Chart */}
+      <div className="bg-white p-4 rounded shadow">
+        <h2 className="font-semibold text-lg mb-4">Partner Performance</h2>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            <Pie
+              data={partnerStats}
+              dataKey="completed"
+              nameKey="name"
+              outerRadius={100}
+              fill="#8884d8"
+              label
+            >
+              {partnerStats.map((_, index) => (
+                <Cell key={index} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

@@ -1,8 +1,11 @@
+// src/App.tsx
 import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import { io, Socket } from "socket.io-client";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+// Utils
+import socket from "./utils/socket";
 
 // Pages
 import Login from "./pages/Login";
@@ -29,17 +32,20 @@ import { AuthProvider } from "./context/AuthContext";
 import "./App.css";
 import "./index.css";
 
-// Initialize WebSocket connection
-const socket: Socket = io("http://localhost:5000");
-
 function App() {
   useEffect(() => {
+    socket.connect();
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to WebSocket server");
+    });
+
     socket.on("notification", (message: string) => {
       toast.info(message || "📢 New Notification!");
     });
 
     return () => {
-      socket.off("notification");
+      socket.disconnect();
     };
   }, []);
 
@@ -47,6 +53,7 @@ function App() {
     <AuthProvider>
       <ToastContainer position="top-right" autoClose={4000} />
       <Notifications />
+
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Login />} />
@@ -135,7 +142,7 @@ function App() {
           }
         />
 
-        {/* 404 Not Found */}
+        {/* 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

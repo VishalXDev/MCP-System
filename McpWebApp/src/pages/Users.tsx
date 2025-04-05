@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { updateUserRole } from "../firebase/roleUtils";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import ProtectedRoute from "../components/ProtectedRoute";
 
@@ -31,7 +31,7 @@ const Users = () => {
       } catch (err) {
         console.error("Error fetching users:", err);
         setError("Failed to load users. Please try again.");
-      }      
+      }
     };
 
     fetchUsers();
@@ -44,17 +44,20 @@ const Users = () => {
 
   // Update user role in Firestore
   const handleUpdateRole = async (userId: string) => {
-    if (!selectedRoles[userId]) return;
+    const newRole = selectedRoles[userId];
+    const adminUid = auth.currentUser?.uid;
+
+    if (!newRole || !adminUid) return;
 
     setLoading((prev) => ({ ...prev, [userId]: true }));
 
     try {
-      await updateUserRole(userId, selectedRoles[userId]);
+      await updateUserRole(adminUid, userId, newRole);
       alert("User role updated successfully!");
 
       // Update UI after role change
       setUsers((prevUsers) =>
-        prevUsers.map((user) => (user.id === userId ? { ...user, role: selectedRoles[userId] } : user))
+        prevUsers.map((user) => (user.id === userId ? { ...user, role: newRole } : user))
       );
     } catch (err) {
       console.error("Failed to update role:", err);

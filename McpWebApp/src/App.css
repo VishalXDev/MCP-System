@@ -1,3 +1,13 @@
+/* Global Variables */
+:root {
+  --primary-color: #646cff;
+  --hover-shadow: 0 0 2rem var(--primary-color);
+  --bg-card: #1e1e1e;
+  --text-muted: #888;
+  --card-radius: 8px;
+}
+
+/* Root Layout */
 #root {
   max-width: 90%;
   margin: 0 auto;
@@ -14,7 +24,7 @@
 }
 
 .logo:hover {
-  filter: drop-shadow(0 0 2rem #646cffaa);
+  filter: drop-shadow(var(--hover-shadow));
 }
 
 .logo.react:hover {
@@ -31,7 +41,6 @@
   }
 }
 
-/* Apply animation only if motion is not reduced */
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
@@ -41,8 +50,8 @@
 /* Card Styles */
 .card {
   padding: 2rem;
-  border-radius: 8px;
-  background-color: #1e1e1e;
+  border-radius: var(--card-radius);
+  background-color: var(--bg-card);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -54,7 +63,7 @@
 
 /* Documentation Text */
 .read-the-docs {
-  color: #888;
+  color: var(--text-muted);
 }
 
 /* Login Container */
@@ -66,6 +75,11 @@
   border-radius: 10px;
   background: #f9f9f9;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
 }
 
 /* Responsive Design */
@@ -84,5 +98,6 @@
 
   .login-container {
     max-width: 90%;
+    min-height: auto;
   }
 }

@@ -1,16 +1,16 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "./firebaseConfig"; // Ensure correct Firebase import
+import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "./firebaseConfig";
 
-// ✅ Admin UID (Ensure it's correctly set in .env)
+// ✅ Admin UID from .env (must be defined)
 export const ADMIN_UID = import.meta.env.VITE_ADMIN_UID;
 
 /**
- * 🔍 Fetches the user role from Firestore.
- * @param uid - User ID
- * @returns Role of the user (default: "staff")
+ * 🔍 Fetch the user's role from Firestore.
+ * @param uid - Firebase Auth UID
+ * @returns User's role or "staff" by default
  */
 export const getUserRole = async (uid: string): Promise<string> => {
-  if (!uid) return "staff"; // 🚨 Ensure UID is valid
+  if (!uid) return "staff";
 
   try {
     const userRef = doc(db, "users", uid);
@@ -18,37 +18,41 @@ export const getUserRole = async (uid: string): Promise<string> => {
 
     if (docSnap.exists()) {
       const userData = docSnap.data();
-      return userData?.role ?? "staff"; // Default to "staff"
+      return typeof userData?.role === "string" ? userData.role : "staff";
     } else {
-      console.warn(`⚠ User ${uid} not found in Firestore.`);
+      console.warn(`⚠️ User not found: ${uid}`);
     }
   } catch (error) {
-    console.error("🚨 Error fetching user role:", (error as Error).message);
+    console.error("🚨 Failed to fetch user role:", (error as Error).message);
   }
 
-  return "staff"; // 🚨 Fail-safe return
+  return "staff";
 };
 
 /**
- * 🔒 Securely updates the user role (Only Admin can update roles).
- * @param adminUid - Admin UID (current user)
- * @param uid - User ID whose role needs to be updated
+ * 🔐 Update a user's role in Firestore (admin only).
+ * @param adminUid - UID of the current admin
+ * @param uid - UID of the user whose role is being updated
  * @param newRole - New role to assign
  */
-export const updateUserRole = async (adminUid: string, uid: string, newRole: string): Promise<void> => {
+export const updateUserRole = async (
+  adminUid: string,
+  uid: string,
+  newRole: "admin" | "manager" | "staff"
+): Promise<void> => {
   try {
     if (!adminUid || !uid || !newRole) {
-      throw new Error("Invalid parameters: Admin UID, User UID, and role are required.");
+      throw new Error("Missing required parameters.");
     }
 
-    // 🔒 Security Check: Ensure only the Admin can update roles
     if (adminUid !== ADMIN_UID) {
-      throw new Error("❌ Unauthorized: Only the admin can update roles.");
+      throw new Error("Unauthorized: Only admin can update roles.");
     }
 
     const userRef = doc(db, "users", uid);
-    await setDoc(userRef, { role: newRole }, { merge: true });
-    console.log(`✅ User ${uid} role updated to "${newRole}"`);
+    await updateDoc(userRef, { role: newRole });
+
+    console.log(`✅ Role for ${uid} updated to "${newRole}"`);
   } catch (error) {
     console.error("🚨 Error updating user role:", (error as Error).message);
   }

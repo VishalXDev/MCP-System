@@ -4,28 +4,27 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useAuth } from "../context/AuthContext";
 
-// Fetches the user's role from Firestore
+// Fetch user role from Firestore
 const getUserRole = async (uid: string): Promise<string> => {
   if (!uid) {
     console.error("🚨 Invalid UID provided.");
-    return "staff"; // Default role if UID is invalid
+    return "staff";
   }
 
   try {
-    console.log(`🔹 Fetching role for UID: ${uid}`);
     const userDocRef = doc(db, "users", uid);
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
       console.warn(`⚠ No user document found for UID: ${uid}`);
-      return "staff"; // Default role if document is not found
+      return "staff";
     }
 
     const userData = userDocSnap.data();
     return userData?.role && typeof userData.role === "string" ? userData.role : "staff";
   } catch (error) {
     console.error("🚨 Error fetching user role:", error);
-    return "staff"; // Default role on error
+    return "staff";
   }
 };
 
@@ -36,7 +35,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles, children }) => {
   const { user, loading, setRole, role } = useAuth();
-  const [roleLoading, setRoleLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (user && !role) {

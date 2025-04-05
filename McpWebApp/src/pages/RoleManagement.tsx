@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { updateUserRole } from "../firebase/roleUtils";
-import { useAuth } from "../context/AuthContext"; // ✅ Import AuthContext
+import { useAuth } from "../context/AuthContext";
 
 interface User {
   id: string;
@@ -11,7 +11,7 @@ interface User {
 }
 
 const RoleManagement = () => {
-  const { user } = useAuth(); // ✅ Get logged-in user (Admin)
+  const { user } = useAuth(); // Get logged-in user (should be admin)
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +19,21 @@ const RoleManagement = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch("/api/users"); // Replace with actual API
+        const response = await fetch("/api/users"); // Replace with your backend API
         const data: User[] = await response.json();
-        setUsers(data.map(user => ({ ...user, originalRole: user.role })));
-      } catch (error) {
-        console.error("Error fetching users:", error);
+        setUsers(data.map((u) => ({ ...u, originalRole: u.role })));
+      } catch (err) {
+        console.error("Error fetching users:", err);
         setError("Failed to load users");
       }
     };
     fetchUsers();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: "staff" | "manager" | "admin") => {
+  const handleRoleChange = async (
+    userId: string,
+    newRole: "staff" | "manager" | "admin"
+  ) => {
     if (!user) {
       setError("Unauthorized: Admin login required");
       return;
@@ -40,10 +43,14 @@ const RoleManagement = () => {
     setError(null);
 
     try {
-      await updateUserRole(user.uid, userId, newRole); // ✅ Pass admin UID as first argument
-      setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user)));
-    } catch (error) {
-      console.error("Error updating role", error);
+      await updateUserRole(user.uid, userId, newRole); // Admin UID + target UID + new role
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, role: newRole } : u
+        )
+      );
+    } catch (err) {
+      console.error("Error updating role:", err);
       setError("Failed to update role");
     } finally {
       setLoading((prev) => ({ ...prev, [userId]: false }));
@@ -51,58 +58,75 @@ const RoleManagement = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-900 text-white">
-      <h2 className="text-2xl mb-4">Role Management</h2>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      <table className="w-full border border-gray-700">
-        <thead>
-          <tr className="bg-gray-700">
-            <th className="p-3">Name</th>
-            <th className="p-3">Email</th>
-            <th className="p-3">Role</th>
-            <th className="p-3">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {users.length > 0 ? (
-            users.map((user) => (
-              <tr key={user.id} className="border-t border-gray-700">
-                <td className="p-3">{user.name}</td>
-                <td className="p-3">{user.email}</td>
-                <td className="p-3">
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as User["role"])}
-                    className="p-2 bg-gray-700 rounded"
-                    disabled={loading[user.id]}
-                  >
-                    <option value="staff">Staff</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </td>
-                <td className="p-3">
-                  <button
-                    onClick={() => handleRoleChange(user.id, user.role)}
-                    disabled={loading[user.id] || user.role === user.originalRole}
-                    className={`py-1 px-3 rounded text-white ${
-                      loading[user.id] ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700"
-                    }`}
-                  >
-                    {loading[user.id] ? "Updating..." : "Update Role"}
-                  </button>
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Role Management</h1>
+
+      {error && (
+        <div className="bg-red-100 text-red-700 px-4 py-2 rounded">
+          {error}
+        </div>
+      )}
+
+      <div className="overflow-x-auto bg-white rounded shadow">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-gray-100 text-gray-700 uppercase text-xs">
+            <tr>
+              <th className="p-3">Name</th>
+              <th className="p-3">Email</th>
+              <th className="p-3">Role</th>
+              <th className="p-3">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.length > 0 ? (
+              users.map((u) => (
+                <tr key={u.id} className="border-t hover:bg-gray-50">
+                  <td className="p-3">{u.name}</td>
+                  <td className="p-3">{u.email}</td>
+                  <td className="p-3">
+                    <select
+                      value={u.role}
+                      onChange={(e) =>
+                        handleRoleChange(
+                          u.id,
+                          e.target.value as User["role"]
+                        )
+                      }
+                      disabled={loading[u.id]}
+                      className="p-2 bg-gray-100 border rounded"
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td className="p-3">
+                    <button
+                      onClick={() => handleRoleChange(u.id, u.role)}
+                      disabled={
+                        loading[u.id] || u.role === u.originalRole
+                      }
+                      className={`px-4 py-1 text-sm rounded text-white transition ${
+                        loading[u.id]
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700"
+                      }`}
+                    >
+                      {loading[u.id] ? "Updating..." : "Update Role"}
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="p-4 text-center text-gray-500">
+                  No users found.
                 </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={4} className="text-center p-3">
-                No users found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

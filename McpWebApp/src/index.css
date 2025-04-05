@@ -5,11 +5,12 @@
 /* 🌍 Global Styles */
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  @apply text-white bg-gray-900; /* Tailwind Dark Mode */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  @apply text-white bg-gray-900; /* Tailwind Dark Mode Base */
 }
 
 body {
@@ -26,17 +27,21 @@ a:hover {
 }
 
 /* 🏷️ Headings */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-bold text-white;
+}
+
 h1 {
-  @apply text-4xl font-bold leading-tight;
+  @apply text-4xl leading-tight;
 }
 
 /* 🛠️ Buttons */
 button {
   @apply rounded-lg border border-transparent px-4 py-2 text-lg font-medium transition-all duration-200 
-         bg-gray-800 hover:border-blue-500 focus:ring focus:ring-blue-500/50 active:scale-95;
+         bg-gray-800 hover:border-blue-500 focus:outline-none focus:ring focus:ring-blue-500/50 active:scale-95;
 }
 
-/* 🌗 Light Mode */
+/* 🌗 Light Mode Support */
 @media (prefers-color-scheme: light) {
   :root {
     @apply text-gray-900 bg-white;
@@ -48,5 +53,9 @@ button {
 
   button {
     @apply bg-gray-100 text-gray-900 hover:bg-gray-200;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-black;
   }
 }

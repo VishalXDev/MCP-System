@@ -21,7 +21,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
-      if (currentUser && !role) { // Only fetch role if user exists and role isn't set
+      if (currentUser) {
         try {
           const userRole = await getUserRole(currentUser.uid);
           setRole(userRole || "staff");
@@ -29,15 +29,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           console.error("❌ Error fetching user role:", error);
           setRole("staff");
         }
+      } else {
+        setRole("staff"); // Reset on logout
       }
 
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [role]); // Depend on role to prevent redundant fetches
+  }, []);
 
-  // 🛠️ Memoize context value to prevent unnecessary renders
   const contextValue = useMemo(() => ({ user, role, loading, setRole }), [user, role, loading]);
 
   return (

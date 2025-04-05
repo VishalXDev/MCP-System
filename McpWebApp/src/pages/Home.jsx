@@ -1,11 +1,10 @@
 import React, { useEffect } from "react";
 import { toast } from "react-toastify";
-import { io } from "socket.io-client";
-
-const socket = io("http://localhost:5000");
+import socket from "../socket"; // Reusable socket instance
 
 const Home = () => {
   useEffect(() => {
+    // Listen for real-time notifications
     socket.on("notification", (data) => {
       toast.info(data.message || "📢 New Notification!");
     });
@@ -17,8 +16,8 @@ const Home = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold">📊 MCP Dashboard</h1>
-      {/* Your dashboard cards/components here */}
+      <h1 className="text-2xl font-bold mb-4">📊 MCP Dashboard</h1>
+      <p className="text-gray-600">Welcome! Real-time updates will appear as notifications.</p>
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { db, auth, storage } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { toast } from "react-toastify";
 
 const Settings = () => {
   const [theme, setTheme] = useState("light");
@@ -10,8 +11,8 @@ const Settings = () => {
   const [profilePic, setProfilePic] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true); // 🔹 Loading state for better UX
-  const [saving, setSaving] = useState(false); // 🔹 Disable Save button while processing
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const user = auth.currentUser;
 
@@ -35,7 +36,7 @@ const Settings = () => {
         }
       } catch (error) {
         console.error("❌ Error fetching user settings:", error);
-        setError("Failed to load settings. Please try again.");
+        setError("Failed to load settings.");
       } finally {
         setLoading(false);
       }
@@ -45,24 +46,21 @@ const Settings = () => {
   }, [user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      const selectedFile = e.target.files[0];
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-      // Validate file type (optional)
-      if (!selectedFile.type.startsWith("image/")) {
-        setError("Only image files are allowed.");
-        return;
-      }
-
-      // Validate file size (optional, e.g., max 5MB)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError("File size should be less than 5MB.");
-        return;
-      }
-
-      setFile(selectedFile);
-      setProfilePic(URL.createObjectURL(selectedFile)); // Show preview
+    if (!selectedFile.type.startsWith("image/")) {
+      setError("Only image files are allowed.");
+      return;
     }
+
+    if (selectedFile.size > 5 * 1024 * 1024) {
+      setError("File must be smaller than 5MB.");
+      return;
+    }
+
+    setFile(selectedFile);
+    setProfilePic(URL.createObjectURL(selectedFile)); // preview
   };
 
   const uploadProfilePic = async (): Promise<string | null> => {
@@ -71,9 +69,10 @@ const Settings = () => {
     try {
       const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
       await uploadBytes(storageRef, file);
-      return await getDownloadURL(storageRef);
+      const downloadURL = await getDownloadURL(storageRef);
+      return `${downloadURL}?t=${Date.now()}`; // cache-busting
     } catch (error) {
-      console.error("❌ Error uploading profile picture:", error);
+      console.error("❌ Error uploading profile pic:", error);
       setError("Failed to upload profile picture.");
       return null;
     }
@@ -99,10 +98,10 @@ const Settings = () => {
         preferences: { theme, notifications }
       }, { merge: true });
 
-      alert("✅ Settings saved!");
+      toast.success("✅ Settings saved!");
     } catch (error) {
       console.error("❌ Error saving settings:", error);
-      setError("Failed to save settings. Please try again.");
+      toast.error("Failed to save settings.");
     } finally {
       setSaving(false);
     }
@@ -123,7 +122,6 @@ const Settings = () => {
 
       {error && <p className="text-red-500 mb-2">{error}</p>}
 
-      {/* Profile Picture Upload */}
       <div className="mb-4">
         {profilePic && (
           <img src={profilePic} alt="Profile" className="w-20 h-20 rounded-full mb-2" />
@@ -131,7 +129,6 @@ const Settings = () => {
         <input type="file" accept="image/*" onChange={handleFileChange} className="block" />
       </div>
 
-      {/* Name Input */}
       <label className="block mb-2">
         Name:
         <input
@@ -142,7 +139,6 @@ const Settings = () => {
         />
       </label>
 
-      {/* Theme Selector */}
       <label className="block mb-2">
         Theme:
         <select
@@ -155,7 +151,6 @@ const Settings = () => {
         </select>
       </label>
 
-      {/* Notification Toggle */}
       <label className="block mb-4">
         <input
           type="checkbox"
@@ -165,7 +160,6 @@ const Settings = () => {
         <span className="ml-2">Enable Notifications</span>
       </label>
 
-      {/* Save Button */}
       <button
         onClick={saveSettings}
         disabled={saving}

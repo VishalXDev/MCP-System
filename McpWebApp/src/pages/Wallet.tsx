@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import API from "../utils/axios.ts";
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 interface PayoutRequest {
   _id: string;
@@ -32,16 +30,25 @@ export default function WalletPage() {
   const [partners, setPartners] = useState<User[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState("");
+  const [addAmount, setAddAmount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    fetchWalletBalance();
-    fetchPayoutRequests();
-    fetchAdminAndTransactions();
+    const loadAll = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchWalletBalance(),
+        fetchPayoutRequests(),
+        fetchAdminAndTransactions(),
+      ]);
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   const fetchWalletBalance = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/wallet/balance`);
+      const res = await API.get("/wallet/balance");
       setWalletBalance(res.data.balance);
     } catch (err) {
       console.error("Wallet balance error:", err);
@@ -51,7 +58,7 @@ export default function WalletPage() {
 
   const fetchPayoutRequests = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/wallet/payout-requests`);
+      const res = await API.get("/wallet/payout-requests");
       setPayoutRequests(res.data);
     } catch (err) {
       console.error("Payout request error:", err);
@@ -60,9 +67,13 @@ export default function WalletPage() {
   };
 
   const approvePayout = async (id: string) => {
+    const confirmApprove = window.confirm("Are you sure you want to approve this payout?");
+    if (!confirmApprove) return;
+
     try {
-      await axios.post(`${API_BASE_URL}/api/wallet/approve-payout/${id}`);
+      await API.post(`/wallet/approve-payout/${id}`);
       fetchPayoutRequests();
+      fetchAdminAndTransactions();
     } catch (err) {
       console.error("Approve payout error:", err);
       setError("Failed to approve payout.");
@@ -79,12 +90,34 @@ export default function WalletPage() {
 
       setAdminBalance(admin?.wallet || 0);
       setPartners(partnersOnly);
-      setTransactions(txnRes.data.reverse());
+
+      const sortedTransactions = txnRes.data.sort(
+        (a: Transaction, b: Transaction) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setTransactions(sortedTransactions);
     } catch (err) {
       console.error("Admin/wallet fetch error:", err);
       setError("Failed to load wallet details.");
     }
   };
+
+  const handleAddMoney = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await API.post("/wallet/add-money", { amount: addAmount });
+      setAddAmount(0);
+      fetchWalletBalance();
+      fetchAdminAndTransactions();
+    } catch (err) {
+      console.error("Add money error:", err);
+      setError("Failed to add money.");
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6 text-center text-lg">Loading wallet data...</div>;
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -92,16 +125,36 @@ export default function WalletPage() {
 
       {error && <p className="text-red-500">{error}</p>}
 
+      {/* Admin Wallet Section */}
       <div className="bg-white rounded p-4 shadow">
         <h2 className="text-lg font-semibold mb-2">Admin Wallet Balance</h2>
         <p className="text-2xl text-green-600">₹ {adminBalance.toFixed(2)}</p>
+
+        <form onSubmit={handleAddMoney} className="mt-4 flex items-center gap-2">
+          <input
+            type="number"
+            value={addAmount}
+            onChange={(e) => setAddAmount(Number(e.target.value))}
+            placeholder="Enter amount"
+            className="border p-2 rounded w-40"
+            required
+          />
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Add Money
+          </button>
+        </form>
       </div>
 
+      {/* API Wallet */}
       <div className="bg-white rounded p-4 shadow">
         <h2 className="text-lg font-semibold mb-2">Wallet Balance (API)</h2>
         <p className="text-2xl text-blue-600">₹ {walletBalance.toFixed(2)}</p>
       </div>
 
+      {/* Pickup Partner Wallets */}
       <div className="bg-white rounded p-4 shadow">
         <h2 className="text-lg font-semibold mb-2">Pickup Partner Wallets</h2>
         <table className="w-full">
@@ -122,6 +175,7 @@ export default function WalletPage() {
         </table>
       </div>
 
+      {/* All Transactions */}
       <div className="bg-white rounded p-4 shadow">
         <h2 className="text-lg font-semibold mb-2">All Transactions</h2>
         <table className="w-full text-sm">
@@ -148,6 +202,7 @@ export default function WalletPage() {
         </table>
       </div>
 
+      {/* Payout Requests */}
       <div className="bg-white rounded p-4 shadow">
         <h2 className="text-lg font-semibold mb-2">Payout Requests</h2>
         <table className="w-full border">
@@ -167,23 +222,27 @@ export default function WalletPage() {
                 </td>
               </tr>
             ) : (
-              payoutRequests.map((req) => (
-                <tr key={req._id} className="border">
-                  <td className="p-2">{req.userId}</td>
-                  <td className="p-2">₹{req.amount}</td>
-                  <td className="p-2">{req.status}</td>
-                  <td className="p-2">
-                    {req.status === "pending" && (
-                      <button
-                        className="bg-green-500 text-white px-2 py-1 rounded"
-                        onClick={() => approvePayout(req._id)}
-                      >
-                        Approve
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))
+              payoutRequests.map((req) => {
+                const partnerName =
+                  partners.find((p) => p._id === req.userId)?.name || req.userId;
+                return (
+                  <tr key={req._id} className="border">
+                    <td className="p-2">{partnerName}</td>
+                    <td className="p-2">₹{req.amount}</td>
+                    <td className="p-2">{req.status}</td>
+                    <td className="p-2">
+                      {req.status === "pending" && (
+                        <button
+                          className="bg-green-500 text-white px-2 py-1 rounded"
+                          onClick={() => approvePayout(req._id)}
+                        >
+                          Approve
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

@@ -1,44 +1,53 @@
 import React, { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client"; // Import WebSocket client
+import { io } from "socket.io-client";
 
-// Initialize WebSocket connection (replace with your backend URL)
-const socket = io("https://your-backend-url.com");
+// ✅ Replace with your actual backend URL
+const socket = io("https://your-backend-url.com", {
+  transports: ["websocket"], // optional: forces WebSocket
+  withCredentials: true,
+});
 
 interface NotificationProps {
   id: number;
   message: string;
   type: "success" | "error";
   onClose: (id: number) => void;
-  index: number; // To dynamically position notifications
+  index: number;
 }
 
-const NotificationItem: React.FC<NotificationProps> = ({ id, message, type, onClose, index }) => {
+const NotificationItem: React.FC<NotificationProps> = ({
+  id,
+  message,
+  type,
+  onClose,
+  index,
+}) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => onClose(id), 3000); // Auto-dismiss after 3s
-
+    timerRef.current = setTimeout(() => onClose(id), 3000);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [id]); 
+  }, [id, onClose]);
 
   return (
     <div
-      className={`fixed right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-all duration-300 transform opacity-100 scale-100
-        ${type === "success" ? "bg-green-500" : "bg-red-500"}
-        `}
-      style={{ top: `${index * 60 + 20}px` }} // Dynamic positioning
+      className={`fixed right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-transform duration-300
+        ${type === "success" ? "bg-green-500" : "bg-red-500"}`}
+      style={{ top: `${index * 70 + 20}px` }}
     >
-      {message}
-      <button className="ml-4 text-white font-bold" onClick={() => onClose(id)}>
-        ✖
-      </button>
+      <div className="flex items-center justify-between gap-2">
+        <span>{message}</span>
+        <button className="ml-2 font-bold" onClick={() => onClose(id)}>
+          ✖
+        </button>
+      </div>
     </div>
   );
 };
 
-const Notifications = () => {
+const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<
     { id: number; message: string; type: "success" | "error" }[]
   >([]);
@@ -47,25 +56,30 @@ const Notifications = () => {
     const handleNotification = (data: { message: string; type: "success" | "error" }) => {
       setNotifications((prev) => [
         ...prev,
-        { id: Date.now(), message: data.message, type: data.type }, // Add new notification
+        { id: Date.now(), message: data.message, type: data.type },
       ]);
     };
 
-    socket.on("notification", handleNotification); // Listen for notifications
+    socket.on("notification", handleNotification);
 
     return () => {
-      socket.off("notification", handleNotification); // Cleanup on unmount
+      socket.off("notification", handleNotification);
     };
   }, []);
 
   const removeNotification = (id: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id)); // Remove notification
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   return (
     <div className="fixed top-5 right-5 z-50 flex flex-col gap-2">
       {notifications.map((notif, index) => (
-        <NotificationItem key={notif.id} {...notif} index={index} onClose={removeNotification} />
+        <NotificationItem
+          key={notif.id}
+          {...notif}
+          index={index}
+          onClose={removeNotification}
+        />
       ))}
     </div>
   );

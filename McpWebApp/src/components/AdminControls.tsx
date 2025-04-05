@@ -1,37 +1,48 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { updateUserRole } from "../firebase/roleUtils";
-import { auth } from "../firebase/firebaseConfig"; // ✅ Import Firebase auth
+import { auth } from "../firebase/firebaseConfig";
+import axios from "axios";
+import { toast } from "react-toastify";
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+// Define role type to restrict values
+type Role = "admin" | "manager" | "staff";
 
 const AdminControls = () => {
-  const [userId, setUserId] = useState("");
-  const [newRole, setNewRole] = useState("staff");
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  
+  // Strictly typing the `newRole` state as a Role type
+  const [newRole, setNewRole] = useState<Role>("staff");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    axios.get("/api/users")
+      .then((res) => setUsers(res.data))
+      .catch(() => toast.error("Failed to load users."));
+  }, []);
+
   const handleUpdateRole = async () => {
-    if (!userId) {
-      alert("Please enter a valid User ID.");
-      return;
-    }
+    if (!selectedUserId) return toast.warn("Please select a user.");
 
     try {
       setLoading(true);
-      const adminUid = auth.currentUser?.uid; // ✅ Get the current admin's UID
+      const adminUid = auth.currentUser?.uid;
+      if (!adminUid) throw new Error("Admin UID not found");
 
-      if (!adminUid) {
-        throw new Error("Unauthorized action: Admin UID not found.");
-      }
-
-      await updateUserRole(adminUid, userId, newRole); // ✅ Pass all 3 arguments
-      alert("User role updated successfully!");
-      setUserId(""); // Clear input after update
-
-      // Redirect to the dashboard
+      await updateUserRole(adminUid, selectedUserId, newRole);
+      toast.success("✅ Role updated successfully!");
       navigate("/dashboard");
     } catch (error) {
-      console.error("Error updating user role:", error);
-      alert("Failed to update user role. Please try again.");
+      console.error(error);
+      toast.error("❌ Failed to update role.");
     } finally {
       setLoading(false);
     }
@@ -39,20 +50,25 @@ const AdminControls = () => {
 
   return (
     <div className="mt-4 p-4 border border-red-500 rounded">
-      <h3 className="text-red-500 font-bold">Admin Controls</h3>
+      <h3 className="text-xl font-semibold text-red-600 mb-4">Admin Controls</h3>
 
-      <input
-        type="text"
-        placeholder="Enter User ID"
-        value={userId}
-        onChange={(e) => setUserId(e.target.value)}
-        className="p-2 border rounded mb-2 w-full text-black bg-white"
-      />
+      <select
+        value={selectedUserId}
+        onChange={(e) => setSelectedUserId(e.target.value)}
+        className="p-2 border rounded w-full mb-3 bg-white text-black"
+      >
+        <option value="">-- Select User --</option>
+        {users.map((user) => (
+          <option key={user._id} value={user._id}>
+            {user.name} ({user.email})
+          </option>
+        ))}
+      </select>
 
       <select
         value={newRole}
-        onChange={(e) => setNewRole(e.target.value)}
-        className="p-2 border rounded w-full mb-2 text-black bg-white"
+        onChange={(e) => setNewRole(e.target.value as Role)} // Type casting to Role
+        className="p-2 border rounded w-full mb-3 bg-white text-black"
       >
         <option value="staff">Staff</option>
         <option value="manager">Manager</option>
@@ -61,10 +77,10 @@ const AdminControls = () => {
 
       <button
         onClick={handleUpdateRole}
-        className={`bg-red-500 hover:bg-red-700 text-black py-2 px-4 rounded ${
-          loading || !userId ? "opacity-50 cursor-not-allowed" : ""
+        disabled={loading || !selectedUserId}
+        className={`bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded w-full ${
+          loading || !selectedUserId ? "opacity-50 cursor-not-allowed" : ""
         }`}
-        disabled={loading || !userId}
       >
         {loading ? "Updating..." : "Update Role"}
       </button>

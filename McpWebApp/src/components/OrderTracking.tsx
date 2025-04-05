@@ -17,6 +17,12 @@ interface Order {
   status: string;
 }
 
+type FirebaseOrder = {
+  latitude: number;
+  longitude: number;
+  status: string;
+};
+
 const OrderTracking = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([28.7041, 77.1025]); // Default: Delhi
@@ -28,10 +34,12 @@ const OrderTracking = () => {
     const unsubscribe = onValue(ordersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const orderList = Object.keys(data)
-          .map((key) => ({
-            id: key,
-            ...data[key],
+        const orderList: Order[] = Object.entries(data as Record<string, FirebaseOrder>)
+          .map(([id, value]) => ({
+            id,
+            latitude: value.latitude,
+            longitude: value.longitude,
+            status: value.status,
           }))
           .filter((order) => order.latitude && order.longitude); // Ensure valid coordinates
 

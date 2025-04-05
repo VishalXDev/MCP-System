@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FaHome, FaClipboardList, FaWallet, FaCog, FaSignOutAlt } from "react-icons/fa";
 import { auth } from "../firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import API from "../utils/axios";
 
 interface Order {
   id: string;
@@ -18,7 +19,11 @@ interface User {
   displayName: string | null;
 }
 
-const AuthContext = createContext<{ user: User | null } | null>(null);
+interface AuthContextType {
+  user: User | null;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 const Orders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -30,22 +35,35 @@ const Orders: React.FC = () => {
 
   const ordersPerPage = 5;
   const totalPages = Math.ceil(orders.length / ordersPerPage);
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   // Fetch Auth User
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser ? { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName } : null);
+      setUser(currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        displayName: currentUser.displayName,
+      } : null);
     });
     return () => unsubscribe();
   }, []);
 
+  // Redirect if not logged in
+  useEffect(() => {
+    if (user === null) {
+      navigate("/login");
+    }
+  }, [user]);
+
   // Fetch Orders
   useEffect(() => {
     setLoading(true);
-    fetch("/api/orders")
-      .then((res) => res.json())
-      .then((data: Order[]) => {
-        setOrders(data);
+    API.get("/orders")
+      .then((res) => {
+        setOrders(res.data);
         setLoading(false);
       })
       .catch((error) => {
@@ -54,16 +72,10 @@ const Orders: React.FC = () => {
       });
   }, []);
 
-  // Handle Logout
   const handleLogout = async () => {
     await signOut(auth);
     navigate("/login");
   };
-
-  // Pagination Logic
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
 
   return (
     <AuthContext.Provider value={{ user }}>
