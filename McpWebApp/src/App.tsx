@@ -5,7 +5,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // Utils & Context
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import socket, { connectSocket } from "./utils/socket";
 
 // Pages
@@ -29,39 +29,51 @@ import Notifications from "./components/Notifications";
 import "./App.css";
 import "./index.css";
 
-function App() {
+function InnerApp() {
+  const { loading, user } = useAuth();
+
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    connectSocket(token); // Connect socket with token
+    if (!loading && user) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        connectSocket(token);
 
-    socket.on("connect", () => {
-      console.log("✅ Connected to WebSocket server");
-    });
+        socket.on("connect", () => {
+          console.log("✅ Connected to WebSocket server");
+        });
 
-    socket.on("notification", (message: string) => {
-      console.info("📢 Notification:", message);
-    });
+        socket.on("notification", (message: string) => {
+          console.info("📢 Notification:", message);
+        });
 
-    return () => {
-      socket.off("connect");
-      socket.off("notification");
-      socket.disconnect();
-    };
-  }, []);
+        return () => {
+          socket.off("connect");
+          socket.off("notification");
+          socket.disconnect();
+        };
+      }
+    }
+  }, [loading, user]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen text-lg text-white">
+        🔄 Authenticating...
+      </div>
+    );
+  }
 
   return (
-    <AuthProvider>
+    <>
       <ToastContainer position="top-right" autoClose={4000} />
       <Notifications />
 
       <Routes>
-        {/* Public Routes */}
+        {/* Public */}
         <Route path="/signup" element={<Signup />} />
-
-        {/* Default Route */}
         <Route path="/" element={<Navigate to="/dashboard" />} />
 
-        {/* Protected Routes */}
+        {/* Protected */}
         <Route
           path="/dashboard"
           element={
@@ -143,9 +155,27 @@ function App() {
           }
         />
 
-        {/* 404 Fallback */}
+        {/* Unauthorized fallback */}
+        <Route
+          path="/unauthorized"
+          element={
+            <div className="flex items-center justify-center h-screen text-red-500 text-xl">
+              🚫 Unauthorized Access
+            </div>
+          }
+        />
+
+        {/* Catch all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <InnerApp />
     </AuthProvider>
   );
 }

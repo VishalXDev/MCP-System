@@ -1,6 +1,6 @@
-// src/context/AuthContext.tsx
-import {
+import React, {
   createContext,
+  useContext,
   useEffect,
   useMemo,
   useState,
@@ -11,26 +11,34 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "../firebase/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 
-// Define the shape of the context
+// ✅ Interface for the context value using Firebase's User
 interface AuthContextType {
   user: User | null;
-  uid: string | null;
-  role: string | null;
+  role: "admin" | "partner" | "pickup-partner" | "user" | null;
   loading: boolean;
 }
 
-// Create the context
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// ✅ Create context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Props type for the provider
+// ✅ Custom hook to access context
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
+// ✅ Props for provider
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-// AuthProvider implementation
+// ✅ AuthProvider implementation
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<AuthContextType["role"]>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,15 +71,7 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const contextValue = useMemo(
-    () => ({
-      user,
-      uid: user?.uid ?? null,
-      role,
-      loading,
-    }),
-    [user, role, loading]
-  );
+  const contextValue = useMemo(() => ({ user, role, loading }), [user, role, loading]);
 
   return (
     <AuthContext.Provider value={contextValue}>
@@ -79,5 +79,3 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-AuthProvider.displayName = "AuthProvider";

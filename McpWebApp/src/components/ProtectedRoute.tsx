@@ -1,12 +1,11 @@
-// src/components/ProtectedRoute.tsx
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/useAuth";
+import { useAuth } from "../context/AuthContext";
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
   children: ReactNode;
-  fallbackUI?: ReactNode; // Optional fallback for unauthorized users
+  fallbackUI?: ReactNode;
 }
 
 const ProtectedRoute = ({
@@ -18,15 +17,19 @@ const ProtectedRoute = ({
   const location = useLocation();
 
   if (loading) {
-    return <div className="text-center mt-10 text-white">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen text-white text-xl">
+        Checking permissions...
+      </div>
+    );
   }
 
   if (!user) {
     console.warn("🔐 Redirecting: User not logged in.");
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/signup" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
     console.warn(
       `🚫 Access denied: Role "${role}" not in [${allowedRoles.join(", ")}]`
     );
