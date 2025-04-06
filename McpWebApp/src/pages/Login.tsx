@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import API from "../utils/axios";
 import { setAuthToken } from "../utils/auth";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 type LoginCredentials = {
   email: string;
@@ -14,7 +14,8 @@ type UserRole = "admin" | "pickup-partner" | "staff";
 
 const getErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.message || "API request failed";
+    const axiosErr = error as AxiosError<{ message?: string }>;
+    return axiosErr.response?.data?.message || "API request failed";
   }
   if (error instanceof Error) return error.message;
   if (typeof error === "string") return error;
@@ -53,7 +54,7 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
+    setError("");
 
     if (!validateInputs()) return;
 
@@ -83,7 +84,7 @@ const Login = () => {
       }
     } catch (err: unknown) {
       console.error("Login error:", err);
-      setError(getErrorMessage(err)); // Display error from backend
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }

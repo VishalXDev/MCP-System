@@ -1,7 +1,8 @@
+import { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
-const NotFound = () => {
+const NotFound: FC = () => {
   const navigate = useNavigate();
 
   return (
@@ -14,9 +15,11 @@ const NotFound = () => {
       <h1 className="text-[8rem] font-extrabold text-red-600 leading-none drop-shadow-md">
         404
       </h1>
-      <p className="text-2xl font-semibold text-gray-800 mt-2">
+
+      <h2 className="text-2xl font-semibold text-gray-800 mt-2">
         Oops! Page Not Found
-      </p>
+      </h2>
+
       <p className="text-gray-500 mt-1 mb-4">
         The page you’re looking for doesn’t exist or has been moved.
       </p>
@@ -24,6 +27,7 @@ const NotFound = () => {
       <button
         onClick={() => navigate("/")}
         className="mt-4 px-6 py-2 text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 transition duration-200"
+        aria-label="Go to homepage"
       >
         🔙 Go Home
       </button>

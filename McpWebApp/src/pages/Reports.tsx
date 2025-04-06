@@ -27,6 +27,7 @@ interface Order {
 interface Partner {
   _id: string;
   name: string;
+  role?: string;
 }
 
 export default function ReportsPage() {
@@ -46,7 +47,7 @@ export default function ReportsPage() {
 
         setOrders(orderRes.data);
         setPartners(
-          userRes.data.filter((u: { role: string }) => u.role === "partner")
+          userRes.data.filter((u: Partner) => u.role === "partner")
         );
       } catch (err) {
         setError("Failed to load reports data.");
@@ -77,12 +78,17 @@ export default function ReportsPage() {
 
   const ordersByDate = Object.values(
     orders.reduce((acc, o) => {
-      const date = new Date(o.createdAt).toLocaleDateString();
+      const date = new Date(o.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+      });
       acc[date] = acc[date] || { date, orders: 0, revenue: 0 };
       acc[date].orders += 1;
       acc[date].revenue += o.amount;
       return acc;
     }, {} as Record<string, { date: string; orders: number; revenue: number }>)
+  ).sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   const COLORS = [
@@ -109,54 +115,63 @@ export default function ReportsPage() {
       {/* Order History Table */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold text-lg mb-2">Order History</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th>Order ID</th>
-              <th>Status</th>
-              <th>Assigned To</th>
-              <th>Amount</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((o) => (
-              <tr key={o._id} className="border-t">
-                <td>{o._id.slice(-6).toUpperCase()}</td>
-                <td>{o.status}</td>
-                <td>
-                  {partners.find((p) => p._id === o.assignedTo)?.name ||
-                    "Unassigned"}
-                </td>
-                <td>₹ {o.amount.toFixed(2)}</td>
-                <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+        <div className="max-h-96 overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th>Order ID</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+                <th>Amount</th>
+                <th>Date</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o._id} className="border-t">
+                  <td>{o._id.slice(-6).toUpperCase()}</td>
+                  <td>{o.status}</td>
+                  <td>
+                    {partners.find((p) => p._id === o.assignedTo)?.name ||
+                      "Unassigned"}
+                  </td>
+                  <td>₹ {o.amount.toFixed(2)}</td>
+                  <td>
+                    {new Date(o.createdAt).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Partner Performance Table */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="font-semibold text-lg mb-2">Partner Performance</h2>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th>Name</th>
-              <th>Completed Orders</th>
-              <th>Total Earnings</th>
-            </tr>
-          </thead>
-          <tbody>
-            {partnerStats.map((stat, i) => (
-              <tr key={i} className="border-t">
-                <td>{stat.name}</td>
-                <td>{stat.completed}</td>
-                <td>₹ {stat.earnings}</td>
+        <div className="max-h-96 overflow-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th>Name</th>
+                <th>Completed Orders</th>
+                <th>Total Earnings</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {partnerStats.map((stat, i) => (
+                <tr key={i} className="border-t">
+                  <td>{stat.name}</td>
+                  <td>{stat.completed}</td>
+                  <td>₹ {stat.earnings}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Orders Over Time Line Chart */}

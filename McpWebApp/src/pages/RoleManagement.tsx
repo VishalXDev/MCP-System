@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { updateUserRole } from "../firebase/roleUtils";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -11,7 +12,7 @@ interface User {
 }
 
 const RoleManagement = () => {
-  const { user } = useAuth(); // Get logged-in user (should be admin)
+  const { user } = useAuth(); // Admin user
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,10 @@ const RoleManagement = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch("/api/users"); // Replace with your backend API
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/users`
+        );
+        if (!response.ok) throw new Error("Failed to fetch users");
         const data: User[] = await response.json();
         setUsers(data.map((u) => ({ ...u, originalRole: u.role })));
       } catch (err) {
@@ -43,15 +47,17 @@ const RoleManagement = () => {
     setError(null);
 
     try {
-      await updateUserRole(user.uid, userId, newRole); // Admin UID + target UID + new role
+      await updateUserRole(user.uid, userId, newRole);
       setUsers((prev) =>
         prev.map((u) =>
           u.id === userId ? { ...u, role: newRole } : u
         )
       );
+      toast.success("Role updated successfully!");
     } catch (err) {
       console.error("Error updating role:", err);
       setError("Failed to update role");
+      toast.error("Failed to update role");
     } finally {
       setLoading((prev) => ({ ...prev, [userId]: false }));
     }
@@ -92,7 +98,7 @@ const RoleManagement = () => {
                           e.target.value as User["role"]
                         )
                       }
-                      disabled={loading[u.id]}
+                      disabled={loading[u.id] || user?.uid === u.id}
                       className="p-2 bg-gray-100 border rounded"
                     >
                       <option value="staff">Staff</option>
@@ -104,7 +110,9 @@ const RoleManagement = () => {
                     <button
                       onClick={() => handleRoleChange(u.id, u.role)}
                       disabled={
-                        loading[u.id] || u.role === u.originalRole
+                        loading[u.id] ||
+                        u.role === u.originalRole ||
+                        user?.uid === u.id
                       }
                       className={`px-4 py-1 text-sm rounded text-white transition ${
                         loading[u.id]

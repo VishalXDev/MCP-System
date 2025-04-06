@@ -4,15 +4,21 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "react-toastify";
 
+// Type for user preferences
+interface Preferences {
+  theme: "light" | "dark";
+  notifications: boolean;
+}
+
 const Settings = () => {
-  const [theme, setTheme] = useState("light");
-  const [notifications, setNotifications] = useState(true);
-  const [name, setName] = useState("");
-  const [profilePic, setProfilePic] = useState("");
+  const [theme, setTheme] = useState<Preferences["theme"]>("light");
+  const [notifications, setNotifications] = useState<boolean>(true);
+  const [name, setName] = useState<string>("");
+  const [profilePic, setProfilePic] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
 
   const user = auth.currentUser;
 
@@ -34,8 +40,8 @@ const Settings = () => {
           setTheme(data.preferences?.theme || "light");
           setNotifications(data.preferences?.notifications ?? true);
         }
-      } catch (error) {
-        console.error("❌ Error fetching user settings:", error);
+      } catch (err) {
+        console.error("❌ Error fetching settings:", err);
         setError("Failed to load settings.");
       } finally {
         setLoading(false);
@@ -59,8 +65,9 @@ const Settings = () => {
       return;
     }
 
+    setError(null);
     setFile(selectedFile);
-    setProfilePic(URL.createObjectURL(selectedFile)); // preview
+    setProfilePic(URL.createObjectURL(selectedFile));
   };
 
   const uploadProfilePic = async (): Promise<string | null> => {
@@ -70,9 +77,9 @@ const Settings = () => {
       const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      return `${downloadURL}?t=${Date.now()}`; // cache-busting
-    } catch (error) {
-      console.error("❌ Error uploading profile pic:", error);
+      return `${downloadURL}?t=${Date.now()}`; // Prevent browser caching
+    } catch (err) {
+      console.error("❌ Upload error:", err);
       setError("Failed to upload profile picture.");
       return null;
     }
@@ -92,15 +99,22 @@ const Settings = () => {
       }
 
       const userRef = doc(db, "users", user.uid);
-      await setDoc(userRef, {
-        name,
-        profilePic: imageUrl,
-        preferences: { theme, notifications }
-      }, { merge: true });
+      await setDoc(
+        userRef,
+        {
+          name,
+          profilePic: imageUrl,
+          preferences: {
+            theme,
+            notifications,
+          },
+        },
+        { merge: true }
+      );
 
       toast.success("✅ Settings saved!");
-    } catch (error) {
-      console.error("❌ Error saving settings:", error);
+    } catch (err) {
+      console.error("❌ Save error:", err);
       toast.error("Failed to save settings.");
     } finally {
       setSaving(false);
@@ -124,9 +138,13 @@ const Settings = () => {
 
       <div className="mb-4">
         {profilePic && (
-          <img src={profilePic} alt="Profile" className="w-20 h-20 rounded-full mb-2" />
+          <img
+            src={profilePic}
+            alt="Profile"
+            className="w-20 h-20 rounded-full mb-2 object-cover"
+          />
         )}
-        <input type="file" accept="image/*" onChange={handleFileChange} className="block" />
+        <input type="file" accept="image/*" onChange={handleFileChange} />
       </div>
 
       <label className="block mb-2">
@@ -143,7 +161,7 @@ const Settings = () => {
         Theme:
         <select
           value={theme}
-          onChange={(e) => setTheme(e.target.value)}
+          onChange={(e) => setTheme(e.target.value as Preferences["theme"])}
           className="ml-2 p-2 rounded bg-gray-700 text-white"
         >
           <option value="light">Light</option>
@@ -164,7 +182,9 @@ const Settings = () => {
         onClick={saveSettings}
         disabled={saving}
         className={`py-2 px-4 rounded font-bold transition-all ${
-          saving ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700"
+          saving
+            ? "bg-gray-500 cursor-not-allowed"
+            : "bg-blue-500 hover:bg-blue-700"
         }`}
       >
         {saving ? "Saving..." : "Save Settings"}

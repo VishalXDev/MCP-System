@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  DocumentData,
+  QueryDocumentSnapshot,
+} from "firebase/firestore";
 import { db } from "../firebase";
 
 interface Notification {
@@ -7,7 +12,7 @@ interface Notification {
   title: string;
   body: string;
   type: string;
-  timestamp: string;
+  timestamp: string | Date;
   read: boolean;
 }
 
@@ -16,14 +21,27 @@ export default function Notifications() {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "notifications"), (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notification[];
+      const data = snapshot.docs.map(
+        (doc: QueryDocumentSnapshot<DocumentData>) => {
+          const docData = doc.data();
+          return {
+            id: doc.id,
+            title: docData.title,
+            body: docData.body,
+            type: docData.type,
+            read: docData.read,
+            timestamp:
+              typeof docData.timestamp?.toDate === "function"
+                ? docData.timestamp.toDate()
+                : new Date(docData.timestamp ?? Date.now()),
+          } as Notification;
+        }
+      );
 
       setNotifications(
         data.sort(
-          (a, b) => +new Date(b.timestamp) - +new Date(a.timestamp)
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         )
       );
     });
@@ -54,7 +72,9 @@ export default function Notifications() {
                   n.read ? "opacity-60" : "opacity-100"
                 } transition`}
               >
-                <h3 className="text-lg font-semibold text-gray-800">{n.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-800">
+                  {n.title}
+                </h3>
                 <p className="text-sm text-gray-600">{n.body}</p>
                 <span className="text-xs text-gray-400 block mt-1">
                   {new Date(n.timestamp).toLocaleString()}

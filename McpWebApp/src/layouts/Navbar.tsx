@@ -1,11 +1,20 @@
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth"; // ✅ Correct location
+import { signOut } from "firebase/auth";
+import { auth } from "../firebase/auth"; // or "../firebase" if using index export
+import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const { user } = useAuth(); // 🔐 Get user from context
+  const navigate = useNavigate();
 
-  const handleLogout = () => {
-    // TODO: Add logout functionality (e.g., Firebase signOut + context reset)
-    console.log("🔒 Logout triggered");
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      console.log("✅ User signed out");
+      navigate("/login");
+    } catch (error) {
+      console.error("❌ Logout failed:", (error as Error).message);
+    }
   };
 
   return (

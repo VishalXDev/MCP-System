@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import API from "../utils/axios.ts";
 
 // Types
+type OrderStatus = "pending" | "assigned" | "picked" | "delivered";
+
 interface Order {
   _id: string;
-  status: "pending" | "assigned" | "picked" | "delivered";
+  status: OrderStatus;
   address: string;
   assignedTo?: string;
   createdAt: string;
@@ -16,11 +18,20 @@ interface Partner {
   role: "partner";
 }
 
+// Status → Color mapping
+const statusColor: Record<OrderStatus, string> = {
+  pending: "bg-gray-500",
+  assigned: "bg-blue-500",
+  picked: "bg-yellow-500",
+  delivered: "bg-green-500",
+};
+
 // Component
 const OrderManagement: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Fetch Orders and Partners
   useEffect(() => {
@@ -51,25 +62,30 @@ const OrderManagement: React.FC = () => {
   // Assign Partner
   const handleAssign = async (orderId: string, partnerId: string) => {
     try {
+      setActionLoading(orderId);
       await API.put(`/orders/${orderId}/assign`, { assignedTo: partnerId });
       const updated = await API.get("/orders");
       setOrders(updated.data);
+      console.log("Partner assigned successfully");
     } catch (err) {
       console.error("Error assigning partner:", err);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   // Update Status
-  const handleStatusUpdate = async (
-    orderId: string,
-    newStatus: Order["status"]
-  ) => {
+  const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
+      setActionLoading(orderId);
       await API.put(`/orders/${orderId}`, { status: newStatus });
       const updated = await API.get("/orders");
       setOrders(updated.data);
+      console.log("Status updated successfully");
     } catch (err) {
       console.error("Error updating status:", err);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -89,6 +105,7 @@ const OrderManagement: React.FC = () => {
                 <th className="p-3 text-left">Assigned To</th>
                 <th className="p-3 text-left">Assign</th>
                 <th className="p-3 text-left">Update Status</th>
+                <th className="p-3 text-left">Created At</th>
               </tr>
             </thead>
             <tbody>
@@ -97,32 +114,21 @@ const OrderManagement: React.FC = () => {
                   <td className="p-3">{order.address}</td>
                   <td className="p-3 capitalize">
                     <span
-                      className={`px-2 py-1 rounded text-white text-xs ${
-                        order.status === "pending"
-                          ? "bg-gray-500"
-                          : order.status === "assigned"
-                          ? "bg-blue-500"
-                          : order.status === "picked"
-                          ? "bg-yellow-500"
-                          : "bg-green-500"
-                      }`}
+                      className={`px-2 py-1 rounded text-white text-xs ${statusColor[order.status]}`}
                     >
                       {order.status}
                     </span>
                   </td>
                   <td className="p-3">
-                    {
-                      partners.find((p) => p._id === order.assignedTo)?.name ||
-                      "Unassigned"
-                    }
+                    {partners.find((p) => p._id === order.assignedTo)?.name ||
+                      "Unassigned"}
                   </td>
                   <td className="p-3">
                     <select
-                      onChange={(e) =>
-                        handleAssign(order._id, e.target.value)
-                      }
+                      onChange={(e) => handleAssign(order._id, e.target.value)}
                       value={order.assignedTo || ""}
                       className="border px-2 py-1 rounded"
+                      disabled={actionLoading === order._id}
                     >
                       <option value="">Select Partner</option>
                       {partners.map((p) => (
@@ -135,19 +141,20 @@ const OrderManagement: React.FC = () => {
                   <td className="p-3">
                     <select
                       onChange={(e) =>
-                        handleStatusUpdate(
-                          order._id,
-                          e.target.value as Order["status"]
-                        )
+                        handleStatusUpdate(order._id, e.target.value as OrderStatus)
                       }
                       value={order.status}
                       className="border px-2 py-1 rounded"
+                      disabled={actionLoading === order._id}
                     >
                       <option value="pending">Pending</option>
                       <option value="assigned">Assigned</option>
                       <option value="picked">Picked</option>
                       <option value="delivered">Delivered</option>
                     </select>
+                  </td>
+                  <td className="p-3">
+                    {new Date(order.createdAt).toLocaleString()}
                   </td>
                 </tr>
               ))}

@@ -1,9 +1,49 @@
+import bcrypt from "bcryptjs";
 import Order from "../models/Order.js";
 import PickupPartner from "../models/PickupPartner.js";
 import { getSocketIO } from "../socket.io/index.js";
 
+// 📌 Add New Pickup Partner (Admin only)
+const addPickupPartner = async (req, res) => {
+  try {
+    const { name, email, phone, password, commission } = req.body;
+
+    const existing = await PickupPartner.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: "Partner with this email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password || "123456", 10);
+
+    const newPartner = new PickupPartner({
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      commission: commission || 10,
+      walletBalance: 0,
+      transactions: [],
+    });
+
+    await newPartner.save();
+
+    res.status(201).json({
+      message: "Pickup partner added successfully",
+      partner: {
+        id: newPartner._id,
+        name: newPartner.name,
+        email: newPartner.email,
+        phone: newPartner.phone,
+      },
+    });
+  } catch (error) {
+    console.error("Error in addPickupPartner:", error);
+    res.status(500).json({ message: `Failed to add pickup partner: ${error.message}` });
+  }
+};
+
 // 📌 Update Order Status & Credit Earnings to Wallet
-export const updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
@@ -62,7 +102,7 @@ export const updateOrderStatus = async (req, res) => {
 };
 
 // 📌 Get Wallet Details
-export const getWalletDetails = async (req, res) => {
+const getWalletDetails = async (req, res) => {
   try {
     const partner = await PickupPartner.findById(req.user._id);
     if (!partner) {
@@ -80,10 +120,10 @@ export const getWalletDetails = async (req, res) => {
 };
 
 // 📌 Get Pickup Partner Performance (Completed Orders Count)
-export const getPartnerPerformance = async (req, res) => {
+const getPartnerPerformance = async (req, res) => {
   try {
     const stats = await Order.aggregate([
-      { $match: { status: "Completed" } }, // ensure case matches stored value
+      { $match: { status: "Completed" } },
       {
         $group: {
           _id: "$assignedTo",
@@ -115,4 +155,12 @@ export const getPartnerPerformance = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+// ✅ Export all functions
+export {
+  addPickupPartner,
+  updateOrderStatus,
+  getWalletDetails,
+  getPartnerPerformance,
 };

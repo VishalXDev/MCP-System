@@ -8,8 +8,8 @@ import { onAuthStateChanged, User } from "firebase/auth";
 const Settings = () => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [notifications, setNotifications] = useState<boolean>(true);
-  const [role, setRole] = useState<string>("staff");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [role, setRole] = useState<"staff" | "manager" | "admin">("staff");
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -23,7 +23,6 @@ const Settings = () => {
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -34,19 +33,19 @@ const Settings = () => {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setTheme(data.preferences?.theme || "light");
+        setTheme(data.preferences?.theme ?? "light");
         setNotifications(data.preferences?.notifications ?? true);
       }
 
       try {
         const userRole = await getUserRole(userId);
-        setRole(userRole);
+        setRole(userRole as "staff" | "manager" | "admin");
       } catch {
-        setRole("staff"); // fallback role
+        setRole("staff"); // fallback
       }
     } catch (err) {
       console.error("Settings fetch error:", err);
-      setError("Failed to load settings. Please try again.");
+      setError("⚠️ Failed to load settings. Please try again.");
     } finally {
       setLoading(false);
     }

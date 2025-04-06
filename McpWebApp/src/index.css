@@ -4,7 +4,7 @@
 
 /* 🌍 Global Styles */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,16 +21,14 @@ body {
 a {
   @apply font-medium text-blue-500 transition-colors duration-200;
 }
-
 a:hover {
   @apply text-blue-400 underline;
 }
 
 /* 🏷️ Headings */
 h1, h2, h3, h4, h5, h6 {
-  @apply font-bold text-white;
+  @apply font-bold;
 }
-
 h1 {
   @apply text-4xl leading-tight;
 }
@@ -38,7 +36,7 @@ h1 {
 /* 🛠️ Buttons */
 button {
   @apply rounded-lg border border-transparent px-4 py-2 text-lg font-medium transition-all duration-200 
-         bg-gray-800 hover:border-blue-500 focus:outline-none focus:ring focus:ring-blue-500/50 active:scale-95;
+         bg-gray-800 text-white hover:border-blue-500 focus:outline-none focus:ring focus:ring-blue-500/50 active:scale-95;
 }
 
 /* 🌗 Light Mode Support */

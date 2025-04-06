@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth"; // ✅
+
 
 // Fetch user role from Firestore
 const getUserRole = async (uid: string): Promise<string> => {

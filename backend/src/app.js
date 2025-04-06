@@ -12,7 +12,7 @@ import logger from "./logger.js";
 import connectDB from "./config/db.js";
 import { initializeSocket } from "./socket.js";
 import redis from "./config/redis.js"; // Redis client
-
+import { errorHandler } from "./middleware/errorHandler.js";
 // Load env variables
 dotenv.config();
 const PORT = process.env.PORT || 5000;
@@ -105,5 +105,6 @@ connectDB()
     process.exit(1);
   });
 
+app.use(errorHandler); // <== Keep this as the last middleware
 // Export for external use (e.g., testing)
 export { io, server };

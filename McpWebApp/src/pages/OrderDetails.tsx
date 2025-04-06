@@ -5,19 +5,22 @@ interface Order {
   id: string;
   status: string;
   customerName: string;
-  location?: { lat: number; lng: number };
+  location?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 interface OrderDetailsProps {
-  order?: Order; // Optional: allows fallback fetch/mock
+  order?: Order;
 }
 
 const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
-  const { orderId } = useParams();
+  const { orderId = "Unknown" } = useParams<{ orderId: string }>();
 
-  // Mock fallback if no order prop is passed
-  const fetchedOrder: Order = order || {
-    id: orderId || "Unknown",
+  // Fallback if no prop passed
+  const fetchedOrder: Order = order ?? {
+    id: orderId,
     status: "Pending",
     customerName: "Jane Doe",
     location: { lat: 40.7128, lng: -74.006 }, // NYC default
@@ -55,7 +58,9 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
           <OrderMap orderLocation={fetchedOrder.location} />
         </div>
       ) : (
-        <p className="text-gray-500">No location data available for this order.</p>
+        <p className="text-gray-500">
+          No location data available for this order.
+        </p>
       )}
     </div>
   );

@@ -14,17 +14,15 @@ import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
 import { getSocketIO } from "../socket.io/index.js";
 import { sendNotification } from "../socket.js";
+import { validate, validateCreateOrder } from '../middleware/validators.js';
 
 const router = express.Router();
 
 // 📌 Create Order
 router.post(
-  "/",
+  "/create",
   protect,
-  [
-    check("productId").notEmpty().withMessage("Product ID is required"),
-    check("quantity").isInt({ gt: 0 }).withMessage("Quantity must be positive"),
-  ],
+  validate(validateCreateOrder),
   createOrder
 );
 

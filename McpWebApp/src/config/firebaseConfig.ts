@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getStorage } from "firebase/storage"; // ✅ Added for storage support
 
 // It's best to store keys in .env for security
 const firebaseConfig = {
@@ -22,4 +23,5 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const realtimeDB = getDatabase(app);
+export const storage = getStorage(app); // ✅ Now available for uploading profile pics
 export default app;

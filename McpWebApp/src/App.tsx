@@ -1,11 +1,12 @@
 // src/App.tsx
-import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { Routes, Route } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Utils
-import socket from "./utils/socket";
+// Utils & Context
+import { AuthProvider } from "./context/AuthContext";
+import socket, { connectSocket } from "./utils/socket";
 
 // Pages
 import Login from "./pages/Login";
@@ -14,9 +15,9 @@ import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import OrderManagement from "./pages/OrderManagement";
 import OrderDetails from "./pages/OrderDetails";
-import NotFound from "./pages/NotFound";
 import WalletPage from "./pages/Wallet";
 import ReportsPage from "./pages/Reports";
+import NotFound from "./pages/NotFound";
 
 // Components
 import AdminDashboard from "./components/AdminControls";
@@ -25,26 +26,26 @@ import OrderTracking from "./components/OrderTracking";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Notifications from "./components/Notifications";
 
-// Context
-import { AuthProvider } from "./context/AuthContext";
-
 // Styles
 import "./App.css";
 import "./index.css";
 
 function App() {
   useEffect(() => {
-    socket.connect();
+    const token = localStorage.getItem("token");
+    connectSocket(token); // Improved: token-aware connection
 
     socket.on("connect", () => {
       console.log("✅ Connected to WebSocket server");
     });
 
     socket.on("notification", (message: string) => {
-      toast.info(message || "📢 New Notification!");
+      console.info("📢 Notification:", message);
     });
 
     return () => {
+      socket.off("connect");
+      socket.off("notification");
       socket.disconnect();
     };
   }, []);
@@ -142,7 +143,7 @@ function App() {
           }
         />
 
-        {/* 404 */}
+        {/* 404 Fallback */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AuthProvider>

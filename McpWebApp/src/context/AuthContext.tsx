@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useMemo } from "react";
+import { createContext, useEffect, useState, ReactNode, useMemo } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "../firebase/firebaseConfig";
 import { getUserRole } from "../firebase/roleUtils";
@@ -10,11 +10,11 @@ interface AuthContextType {
   setRole: (role: string) => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string>("staff"); // Default role
+  const [role, setRole] = useState<string>("staff");
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setRole("staff");
         }
       } else {
-        setRole("staff"); // Reset on logout
+        setRole("staff");
       }
 
       setLoading(false);
@@ -41,17 +41,5 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const contextValue = useMemo(() => ({ user, role, loading, setRole }), [user, role, loading]);
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("❌ useAuth must be used within an AuthProvider");
-  }
-  return context;
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };

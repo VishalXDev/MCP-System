@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { db } from "../firebase/firebaseConfig";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import API from "../utils/axios.ts";
 
 interface DashboardStats {
@@ -48,6 +48,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const usingFirebase = process.env.REACT_APP_USE_FIREBASE === "true";
+
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -80,7 +82,7 @@ const Dashboard = () => {
 
         const unassignedCount = ordersList.filter((order) => !order.assignedTo).length;
         setStats((prev) => ({
-          ...(prev as DashboardStats),
+          ...prev,
           unassignedOrders: unassignedCount,
         }));
       } catch (error) {
@@ -99,18 +101,19 @@ const Dashboard = () => {
         const admin = users.find((u) => u.role === "admin");
         setWallet(admin?.wallet || 0);
         setOrders(orderRes.data);
-        const partnersFiltered: Partner[] = users
-        .filter((u): u is Partner => u.role === "partner" && typeof u.isOnline === "boolean");
-      
-      setPartners(partnersFiltered);
-            } catch (error) {
+
+        const partnersFiltered = users.filter(
+          (u): u is Partner => u.role === "partner" && typeof u.isOnline === "boolean"
+        );
+        setPartners(partnersFiltered);
+      } catch (error) {
         console.error("Error fetching API data:", error);
       }
     };
 
     const fetchData = async () => {
       try {
-        if (process.env.REACT_APP_USE_FIREBASE === "true") {
+        if (usingFirebase) {
           await Promise.all([fetchStats(), fetchOrders()]);
         } else {
           await fetchAPIData();
@@ -123,7 +126,7 @@ const Dashboard = () => {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, usingFirebase]);
 
   const dashboardCards = useMemo(
     () =>
@@ -225,18 +228,14 @@ const Dashboard = () => {
     </div>
   );
 
-  return process.env.REACT_APP_USE_FIREBASE === "true"
-    ? renderFirebaseDashboard()
-    : renderAPIDashboard();
+  return usingFirebase ? renderFirebaseDashboard() : renderAPIDashboard();
 };
 
-const DashboardCard = ({ title, value, color }: { title: string; value: string | number; color: string }) => {
-  return (
-    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 flex flex-col items-center transition-transform transform hover:scale-105">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-    </div>
-  );
-};
+const DashboardCard = ({ title, value, color }: { title: string; value: string | number; color: string }) => (
+  <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 flex flex-col items-center transition-transform transform hover:scale-105">
+    <h2 className="text-lg font-semibold">{title}</h2>
+    <p className={`text-3xl font-bold ${color}`}>{value}</p>
+  </div>
+);
 
 export default Dashboard;
