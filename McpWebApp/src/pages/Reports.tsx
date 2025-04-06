@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import API from "../utils/axios.ts";
+import API from "../utils/axios";
 import {
   LineChart,
   Line,

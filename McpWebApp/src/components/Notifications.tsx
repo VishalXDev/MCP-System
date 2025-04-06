@@ -1,13 +1,17 @@
-// src/components/Notifications.tsx
 import React, { useState, useEffect, useRef } from "react";
 import socket from "../socket";
 
-interface NotificationProps {
+type NotificationType = "success" | "error";
+
+interface NotificationData {
   id: number;
   message: string;
-  type: "success" | "error";
-  onClose: (id: number) => void;
+  type: NotificationType;
+}
+
+interface NotificationProps extends NotificationData {
   index: number;
+  onClose: (id: number) => void;
 }
 
 const NotificationItem: React.FC<NotificationProps> = ({
@@ -28,14 +32,18 @@ const NotificationItem: React.FC<NotificationProps> = ({
 
   return (
     <div
-      className={`fixed right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-transform duration-300 ${
+      className={`fixed right-5 p-4 rounded-lg shadow-md text-white text-sm transition-all duration-300 ${
         type === "success" ? "bg-green-500" : "bg-red-500"
       }`}
-      style={{ top: `${index * 70 + 20}px` }}
+      style={{ top: `${index * 70 + 20}px`, zIndex: 9999 }}
     >
       <div className="flex items-center justify-between gap-2">
         <span>{message}</span>
-        <button className="ml-2 font-bold" onClick={() => onClose(id)}>
+        <button
+          onClick={() => onClose(id)}
+          className="ml-2 font-bold focus:outline-none"
+          aria-label="Close notification"
+        >
           ✖
         </button>
       </div>
@@ -44,16 +52,12 @@ const NotificationItem: React.FC<NotificationProps> = ({
 };
 
 const Notifications: React.FC = () => {
-  const [notifications, setNotifications] = useState<
-    { id: number; message: string; type: "success" | "error" }[]
-  >([]);
+  const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!socket.connected) socket.connect();
 
-    const handleNotification = (data: { message: string; type: "success" | "error" }) => {
+    const handleNotification = (data: { message: string; type: NotificationType }) => {
       setNotifications((prev) => [
         ...prev,
         { id: Date.now(), message: data.message, type: data.type },
@@ -68,7 +72,7 @@ const Notifications: React.FC = () => {
   }, []);
 
   const removeNotification = (id: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    setNotifications((prev) => prev.filter((notif) => notif.id !== id));
   };
 
   return (

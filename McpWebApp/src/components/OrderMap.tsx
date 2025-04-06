@@ -1,3 +1,4 @@
+import React from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { GOOGLE_MAPS_API_KEY } from "../config/googleMapsConfig";
 
@@ -7,25 +8,30 @@ interface OrderLocation {
 }
 
 interface OrderMapProps {
-  orderLocation?: OrderLocation; // Optional prop
+  orderLocation?: OrderLocation;
 }
 
-const mapContainerStyle = {
+const mapContainerStyle: React.CSSProperties = {
   width: "100%",
   height: "400px",
 };
 
-const defaultCenter = { lat: 28.7041, lng: 77.1025 }; // Fallback to Delhi
+const defaultCenter: OrderLocation = {
+  lat: 28.7041, // Default to Delhi
+  lng: 77.1025,
+};
 
 const OrderMap: React.FC<OrderMapProps> = ({ orderLocation }) => {
+  const center = orderLocation || defaultCenter;
+
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
-        center={orderLocation || defaultCenter}
+        center={center}
         zoom={14}
       >
-        {orderLocation && <Marker position={orderLocation} />}
+        <Marker position={center} />
       </GoogleMap>
     </LoadScript>
   );

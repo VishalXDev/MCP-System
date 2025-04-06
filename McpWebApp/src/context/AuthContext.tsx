@@ -1,22 +1,37 @@
-import { createContext, useEffect, useState, ReactNode, useMemo } from "react";
+// src/context/AuthContext.tsx
+import {
+  createContext,
+  useEffect,
+  useMemo,
+  useState,
+  ReactNode,
+  FC,
+} from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase/firebaseConfig";
-import { getUserRole } from "../firebase/roleUtils";
+import { auth, db } from "../firebase/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 
+// Define the shape of the context
 interface AuthContextType {
   user: User | null;
-  role: string;
+  uid: string | null;
+  role: string | null;
   loading: boolean;
-  setRole: (role: string) => void;
-  uid: string | null; // Added UID to context
 }
 
+// Create the context
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+// Props type for the provider
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+// AuthProvider implementation
+export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string>("staff");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -24,14 +39,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (currentUser) {
         try {
-          const userRole = await getUserRole(currentUser.uid);
-          setRole(userRole || "staff");
+          const userRef = doc(db, "users", currentUser.uid);
+          const userSnap = await getDoc(userRef);
+
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setRole(userData.role ?? null);
+          } else {
+            console.warn("⚠️ User document not found in Firestore");
+            setRole(null);
+          }
         } catch (error) {
           console.error("❌ Error fetching user role:", error);
-          setRole("staff");
+          setRole(null);
         }
       } else {
-        setRole("staff");
+        setRole(null);
       }
 
       setLoading(false);
@@ -40,13 +63,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
-  const contextValue = useMemo(() => ({
-    user,
-    role,
-    loading,
-    setRole,
-    uid: user?.uid ?? null, // Exposing the UID here
-  }), [user, role, loading]);
+  const contextValue = useMemo(
+    () => ({
+      user,
+      uid: user?.uid ?? null,
+      role,
+      loading,
+    }),
+    [user, role, loading]
+  );
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
+
+AuthProvider.displayName = "AuthProvider";

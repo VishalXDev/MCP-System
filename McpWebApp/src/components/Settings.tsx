@@ -3,8 +3,8 @@ import { db, auth, storage } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { toast } from "react-toastify";
+import { onAuthStateChanged } from "firebase/auth";
 
-// Type for user preferences
 interface Preferences {
   theme: "light" | "dark";
   notifications: boolean;
@@ -19,18 +19,27 @@ const Settings = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
 
-  const user = auth.currentUser;
-
+  // Watch for auth state
   useEffect(() => {
-    if (!user) {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch user settings
+  useEffect(() => {
+    if (!currentUser) {
       setLoading(false);
       return;
     }
 
     const fetchSettings = async () => {
       try {
-        const userRef = doc(db, "users", user.uid);
+        const userRef = doc(db, "users", currentUser.uid);
         const docSnap = await getDoc(userRef);
 
         if (docSnap.exists()) {
@@ -42,14 +51,19 @@ const Settings = () => {
         }
       } catch (err) {
         console.error("❌ Error fetching settings:", err);
-        setError("Failed to load settings.");
+        setError("Failed to load user settings.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchSettings();
-  }, [user]);
+  }, [currentUser]);
+
+  // Sync theme with HTML class
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -61,7 +75,7 @@ const Settings = () => {
     }
 
     if (selectedFile.size > 5 * 1024 * 1024) {
-      setError("File must be smaller than 5MB.");
+      setError("Image must be smaller than 5MB.");
       return;
     }
 
@@ -71,22 +85,22 @@ const Settings = () => {
   };
 
   const uploadProfilePic = async (): Promise<string | null> => {
-    if (!user || !file) return null;
+    if (!currentUser || !file) return null;
 
     try {
-      const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
+      const storageRef = ref(storage, `users/${currentUser.uid}/profile.jpg`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      return `${downloadURL}?t=${Date.now()}`; // Prevent browser caching
+      return `${downloadURL}?t=${Date.now()}`;
     } catch (err) {
-      console.error("❌ Upload error:", err);
+      console.error("❌ Profile picture upload failed:", err);
       setError("Failed to upload profile picture.");
       return null;
     }
   };
 
   const saveSettings = async () => {
-    if (!user) return;
+    if (!currentUser) return;
 
     setSaving(true);
     setError(null);
@@ -98,7 +112,7 @@ const Settings = () => {
         if (uploadedUrl) imageUrl = uploadedUrl;
       }
 
-      const userRef = doc(db, "users", user.uid);
+      const userRef = doc(db, "users", currentUser.uid);
       await setDoc(
         userRef,
         {
@@ -112,9 +126,9 @@ const Settings = () => {
         { merge: true }
       );
 
-      toast.success("✅ Settings saved!");
+      toast.success("✅ Settings updated" + (file ? " with new profile picture!" : "!"));
     } catch (err) {
-      console.error("❌ Save error:", err);
+      console.error("❌ Error saving settings:", err);
       toast.error("Failed to save settings.");
     } finally {
       setSaving(false);
@@ -124,17 +138,25 @@ const Settings = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen text-white">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500" />
         <span className="ml-3">Loading settings...</span>
       </div>
     );
   }
 
-  return (
-    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md">
-      <h2 className="text-lg font-bold mb-4">User Settings</h2>
+  if (!currentUser) {
+    return (
+      <div className="text-center text-white p-6">
+        <p>You must be logged in to access settings.</p>
+      </div>
+    );
+  }
 
-      {error && <p className="text-red-500 mb-2">{error}</p>}
+  return (
+    <div className="p-6 bg-gray-800 text-white rounded-lg shadow-md max-w-md mx-auto">
+      <h2 className="text-xl font-bold mb-4">User Settings</h2>
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
       <div className="mb-4">
         {profilePic && (
@@ -144,32 +166,39 @@ const Settings = () => {
             className="w-20 h-20 rounded-full mb-2 object-cover"
           />
         )}
-        <input type="file" accept="image/*" onChange={handleFileChange} />
+        <label className="block mb-2 font-medium">Profile Picture</label>
+        <input
+          id="profilePicUpload"
+          type="file"
+          accept="image/*"
+          onChange={handleFileChange}
+          className="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-500 file:text-white hover:file:bg-blue-600"
+        />
       </div>
 
-      <label className="block mb-2">
-        Name:
+      <label className="block mb-3">
+        <span className="block mb-1">Name:</span>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="ml-2 p-2 rounded bg-gray-700 text-white w-full"
+          className="w-full p-2 rounded bg-gray-700 text-white"
         />
       </label>
 
-      <label className="block mb-2">
-        Theme:
+      <label className="block mb-3">
+        <span className="block mb-1">Theme:</span>
         <select
           value={theme}
           onChange={(e) => setTheme(e.target.value as Preferences["theme"])}
-          className="ml-2 p-2 rounded bg-gray-700 text-white"
+          className="w-full p-2 rounded bg-gray-700 text-white"
         >
           <option value="light">Light</option>
           <option value="dark">Dark</option>
         </select>
       </label>
 
-      <label className="block mb-4">
+      <label className="flex items-center mb-4">
         <input
           type="checkbox"
           checked={notifications}
@@ -181,10 +210,8 @@ const Settings = () => {
       <button
         onClick={saveSettings}
         disabled={saving}
-        className={`py-2 px-4 rounded font-bold transition-all ${
-          saving
-            ? "bg-gray-500 cursor-not-allowed"
-            : "bg-blue-500 hover:bg-blue-700"
+        className={`w-full py-2 px-4 rounded font-bold transition-all ${
+          saving ? "bg-gray-500 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700"
         }`}
       >
         {saving ? "Saving..." : "Save Settings"}

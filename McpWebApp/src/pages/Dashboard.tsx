@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { db } from "../firebase/firebaseConfig";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { useAuth } from "../hooks/useAuth";
-import API from "../utils/axios.ts";
+import API from "../utils/axios";
 
 interface DashboardStats {
   totalOrders: number;
@@ -32,8 +32,8 @@ interface User {
   isOnline?: boolean;
 }
 
-const Dashboard = () => {
-  const { user, role } = useAuth();
+const Dashboard: React.FC = () => {
+  const { user, role } = useAuth(); // ✅ role must be provided from context
   const [stats, setStats] = useState<DashboardStats>({
     totalOrders: 0,
     revenue: 0,
@@ -48,7 +48,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const usingFirebase = process.env.REACT_APP_USE_FIREBASE === "true";
+  const usingFirebase = import.meta.env.VITE_USE_FIREBASE === "true";
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -231,7 +231,11 @@ const Dashboard = () => {
   return usingFirebase ? renderFirebaseDashboard() : renderAPIDashboard();
 };
 
-const DashboardCard = ({ title, value, color }: { title: string; value: string | number; color: string }) => (
+const DashboardCard: React.FC<{ title: string; value: string | number; color: string }> = ({
+  title,
+  value,
+  color,
+}) => (
   <div className="bg-white dark:bg-gray-800 shadow-lg rounded-2xl p-6 flex flex-col items-center transition-transform transform hover:scale-105">
     <h2 className="text-lg font-semibold">{title}</h2>
     <p className={`text-3xl font-bold ${color}`}>{value}</p>

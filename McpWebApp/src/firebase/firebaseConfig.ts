@@ -1,9 +1,9 @@
-// firebase/index.ts
+// src/firebase/firebaseConfig.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
 
-// ✅ Firebase config using Vite environment variables
+// ✅ Firebase Configuration using Vite environment variables
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -14,11 +14,55 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// ✅ Prevent multiple initializations
+// ✅ Prevent multiple app instances
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// 🔥 Firebase services
-const auth = getAuth(app);
-const db = getFirestore(app);
+// 🔥 Export Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-export { app, auth, db };
+// ✅ User & Profile Types
+interface User {
+  uid: string;
+  displayName?: string;
+  email?: string;
+}
+
+interface UserProfile {
+  name: string;
+  email: string;
+  role: string;
+  preferences: {
+    theme: string;
+    notifications: boolean;
+  };
+}
+
+// ✅ Function: Create Firestore user profile on first login
+export const createUserProfile = async (user: User): Promise<void> => {
+  if (!user?.uid || !user?.email) {
+    console.warn("⚠️ Invalid user data. Cannot create profile.");
+    return;
+  }
+
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) {
+      const newUserProfile: UserProfile = {
+        name: user.displayName || "New User",
+        email: user.email,
+        role: "staff", // Default role
+        preferences: { theme: "light", notifications: true },
+      };
+
+      await setDoc(userRef, newUserProfile);
+      console.log("✅ User profile created.");
+    } else {
+      console.log("ℹ️ User profile already exists.");
+    }
+  } catch (error) {
+    console.error("❌ Error creating user profile:", error);
+  }
+};

@@ -1,8 +1,24 @@
 import axios from "axios";
+import { auth } from "../firebase";
 
-const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api"; // for Vite
+export const API_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api";
 
-// Orders
+// 🔐 Optional: Attach Firebase token if backend uses Firebase Admin SDK for auth
+axios.interceptors.request.use(async (config) => {
+  const user = auth.currentUser;
+  if (user) {
+    try {
+      const token = await user.getIdToken();
+      config.headers.Authorization = `Bearer ${token}`;
+    } catch (err) {
+      console.error("Failed to attach auth token:", err);
+    }
+  }
+  return config;
+});
+
+// -------------------- ORDERS --------------------
+
 export const fetchOrders = async () => {
   try {
     const res = await axios.get(`${API_URL}/orders`);
@@ -33,7 +49,8 @@ export const updateOrderStatus = async (orderId, status) => {
   }
 };
 
-// Wallet
+// -------------------- WALLET --------------------
+
 export const fetchWalletBalance = async () => {
   try {
     const res = await axios.get(`${API_URL}/wallet/balance`);
@@ -74,7 +91,8 @@ export const approvePayout = async (payoutId) => {
   }
 };
 
-// Transactions
+// -------------------- TRANSACTIONS --------------------
+
 export const fetchTransactions = async () => {
   try {
     const res = await axios.get(`${API_URL}/transactions`);
@@ -85,7 +103,8 @@ export const fetchTransactions = async () => {
   }
 };
 
-// Users
+// -------------------- USERS --------------------
+
 export const fetchUsers = async () => {
   try {
     const res = await axios.get(`${API_URL}/users`);

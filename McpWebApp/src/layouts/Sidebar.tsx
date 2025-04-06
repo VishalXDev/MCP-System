@@ -1,3 +1,5 @@
+// src/layouts/Sidebar.tsx
+import React, { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -13,115 +15,37 @@ const Sidebar = () => {
   const { role } = useAuth(); // 🔐 Get current user's role
 
   return (
-    <div className="w-64 h-screen bg-gray-800 text-white p-5 flex flex-col">
+    <div className="w-full h-full bg-gray-900 text-white p-5 flex flex-col">
       {/* 🅼 MCP Branding */}
-      <h2 className="text-xl font-bold mb-5">MCP System</h2>
+      <h2 className="text-2xl font-bold mb-6 tracking-tight">MCP System</h2>
 
       {/* 📚 Navigation */}
-      <nav className="flex-1">
-        <ul className="space-y-3">
+      <nav className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-900">
+        <ul className="space-y-2">
           {/* 🧭 Dashboard */}
-          <li>
-            <NavLink
-              to="/"
-              className={({ isActive }) =>
-                `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                  isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                }`
-              }
-              aria-label="Dashboard"
-            >
-              <FaTachometerAlt />
-              <span>Dashboard</span>
-            </NavLink>
-          </li>
+          <SidebarLink to="/" icon={<FaTachometerAlt />} label="Dashboard" />
 
           {/* 📦 Orders */}
           {(role === "admin" || role === "pickup-partner") && (
-            <li>
-              <NavLink
-                to="/orders"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                    isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                  }`
-                }
-                aria-label="Orders"
-              >
-                <FaBox />
-                <span>Orders</span>
-              </NavLink>
-            </li>
+            <SidebarLink to="/orders" icon={<FaBox />} label="Orders" />
           )}
 
-          {/* 💸 Wallet (Pickup Partners Only) */}
+          {/* 💸 Wallet (Pickup Partner Only) */}
           {role === "pickup-partner" && (
-            <li>
-              <NavLink
-                to="/wallet"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                    isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                  }`
-                }
-                aria-label="Wallet"
-              >
-                <FaWallet />
-                <span>Wallet</span>
-              </NavLink>
-            </li>
+            <SidebarLink to="/wallet" icon={<FaWallet />} label="Wallet" />
           )}
 
-          {/* 🗺️ Order Tracking (Pickup Partners Only) */}
+          {/* 🗺️ Order Tracking (Pickup Partner Only) */}
           {role === "pickup-partner" && (
-            <li>
-              <NavLink
-                to="/order-tracking"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                    isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                  }`
-                }
-                aria-label="Order Tracking"
-              >
-                <FaMapMarkedAlt />
-                <span>Order Tracking</span>
-              </NavLink>
-            </li>
+            <SidebarLink to="/order-tracking" icon={<FaMapMarkedAlt />} label="Order Tracking" />
           )}
 
-          {/* ⚙️ Settings (Everyone) */}
-          <li>
-            <NavLink
-              to="/settings"
-              className={({ isActive }) =>
-                `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                  isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                }`
-              }
-              aria-label="Settings"
-            >
-              <FaCog />
-              <span>Settings</span>
-            </NavLink>
-          </li>
+          {/* ⚙️ Settings */}
+          <SidebarLink to="/settings" icon={<FaCog />} label="Settings" />
 
-          {/* 👥 User Management (Admin Only) */}
+          {/* 👥 Users (Admin Only) */}
           {role === "admin" && (
-            <li>
-              <NavLink
-                to="/users"
-                className={({ isActive }) =>
-                  `flex items-center px-4 py-2 rounded space-x-2 transition ${
-                    isActive ? "bg-gray-700" : "hover:bg-gray-700"
-                  }`
-                }
-                aria-label="User Management"
-              >
-                <FaUsers />
-                <span>Users</span>
-              </NavLink>
-            </li>
+            <SidebarLink to="/users" icon={<FaUsers />} label="Users" />
           )}
         </ul>
       </nav>
@@ -130,3 +54,27 @@ const Sidebar = () => {
 };
 
 export default Sidebar;
+
+// ✅ Reusable Sidebar Link Component
+interface SidebarLinkProps {
+  to: string;
+  icon: ReactNode; // ✅ Updated from JSX.Element
+  label: string;
+}
+
+const SidebarLink = ({ to, icon, label }: SidebarLinkProps) => (
+  <li>
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center px-4 py-2 rounded space-x-3 transition text-sm font-medium ${
+          isActive ? "bg-gray-700" : "hover:bg-gray-700"
+        }`
+      }
+      aria-label={label}
+    >
+      {icon}
+      <span>{label}</span>
+    </NavLink>
+  </li>
+);

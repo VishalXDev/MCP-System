@@ -1,6 +1,5 @@
 import React from "react";
 
-// Pagination Props
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -12,58 +11,93 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
-  // Handle Page Click
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       onPageChange(page);
     }
   };
 
-  // Render Page Numbers
   const renderPageNumbers = () => {
-    const pageNumbers = [];
+    const pages = [];
 
-    // Show at most 5 pages (previous, next, and 3 pages in between)
-    const pageStart = Math.max(1, currentPage - 2);
-    const pageEnd = Math.min(totalPages, currentPage + 2);
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage > 2) {
+        pages.push(1);
+        if (currentPage > 3) pages.push("...");
+      }
 
-    for (let i = pageStart; i <= pageEnd; i++) {
-      pageNumbers.push(i);
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+
+      if (currentPage < totalPages - 2) {
+        if (currentPage < totalPages - 3) pages.push("...");
+        pages.push(totalPages);
+      }
     }
 
-    return pageNumbers;
+    return pages;
   };
 
   return (
-    <div className="flex items-center justify-center space-x-4 mt-6">
+    <div className="flex items-center justify-center space-x-2 mt-6 text-sm font-medium">
+      <button
+        onClick={() => handlePageChange(1)}
+        disabled={currentPage === 1}
+        className="px-3 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
+      >
+        First
+      </button>
+
       <button
         onClick={() => handlePageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-4 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
+        className="px-3 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
       >
         Prev
       </button>
 
-      {renderPageNumbers().map((page) => (
-        <button
-          key={page}
-          onClick={() => handlePageChange(page)}
-          className={`px-4 py-2 rounded ${
-            page === currentPage
-              ? "bg-blue-500 text-white"
-              : "bg-gray-700 text-white"
-          }`}
-        >
-          {page}
-        </button>
-      ))}
+      {renderPageNumbers().map((page, index) =>
+        page === "..." ? (
+          <span key={`ellipsis-${index}`} className="px-2 text-gray-400">
+            ...
+          </span>
+        ) : (
+          <button
+            key={page}
+            onClick={() => handlePageChange(Number(page))}
+            className={`px-3 py-2 rounded ${
+              currentPage === page
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-white"
+            }`}
+          >
+            {page}
+          </button>
+        )
+      )}
 
       <button
         onClick={() => handlePageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-4 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
+        className="px-3 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
       >
         Next
+      </button>
+
+      <button
+        onClick={() => handlePageChange(totalPages)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-2 rounded bg-gray-700 text-white disabled:bg-gray-500"
+      >
+        Last
       </button>
     </div>
   );

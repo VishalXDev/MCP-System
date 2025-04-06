@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -9,7 +9,6 @@ import { AuthProvider } from "./context/AuthContext";
 import socket, { connectSocket } from "./utils/socket";
 
 // Pages
-import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
@@ -33,7 +32,7 @@ import "./index.css";
 function App() {
   useEffect(() => {
     const token = localStorage.getItem("token");
-    connectSocket(token); // Improved: token-aware connection
+    connectSocket(token); // Connect socket with token
 
     socket.on("connect", () => {
       console.log("✅ Connected to WebSocket server");
@@ -57,9 +56,10 @@ function App() {
 
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Login />} />
-        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+
+        {/* Default Route */}
+        <Route path="/" element={<Navigate to="/dashboard" />} />
 
         {/* Protected Routes */}
         <Route

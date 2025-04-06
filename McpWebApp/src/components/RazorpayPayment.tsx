@@ -1,6 +1,25 @@
 import React from "react";
 
-// Define Razorpay options interface
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayErrorEvent {
+  error: {
+    code: string;
+    description: string;
+    source: string;
+    step: string;
+    reason: string;
+    metadata: {
+      order_id: string;
+      payment_id: string;
+    };
+  };
+}
+
 interface RazorpayOptions {
   key: string;
   amount: number;
@@ -18,45 +37,47 @@ interface RazorpayOptions {
   };
 }
 
-// Define Razorpay response interface
-interface RazorpayResponse {
-  razorpay_payment_id: string;
-  razorpay_order_id: string;
-  razorpay_signature: string;
-}
-
-// Define Razorpay instance interface
 interface RazorpayInstance {
   open(): void;
+  on(event: "payment.failed", handler: (response: RazorpayErrorEvent) => void): void;
 }
 
-// Extend window to include Razorpay constructor
 interface CustomWindow extends Window {
   Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
 }
-
 declare const window: CustomWindow;
 
-const RazorpayPayment: React.FC = () => {
+interface RazorpayPaymentProps {
+  amount: number; // in paise
+  description: string;
+  prefill?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  onSuccess?: (response: RazorpayResponse) => void;
+  onFailure?: (error: RazorpayErrorEvent) => void;
+}
+
+const RazorpayPayment: React.FC<RazorpayPaymentProps> = ({
+  amount,
+  description,
+  prefill,
+  onSuccess,
+  onFailure,
+}) => {
   const handlePayment = () => {
     const options: RazorpayOptions = {
-      key: "your_razorpay_key_id", // Replace with your actual key
-      amount: 50000, // Amount in paise (₹500)
+      key: import.meta.env.VITE_RAZORPAY_KEY || "rzp_test_dummykey", // ✅ Replace or use env
+      amount,
       currency: "INR",
       name: "MCP System",
-      description: "Test Payment",
+      description,
       handler: (response: RazorpayResponse) => {
         console.log("✅ Payment successful:", response);
-        const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = response;
-        console.log("Payment ID:", razorpay_payment_id);
-        console.log("Order ID:", razorpay_order_id);
-        console.log("Signature:", razorpay_signature);
+        onSuccess?.(response); // Optional success handler
       },
-      prefill: {
-        name: "John Doe",
-        email: "john@example.com",
-        contact: "9876543210",
-      },
+      prefill,
       theme: {
         color: "#F37254",
       },
@@ -64,14 +85,21 @@ const RazorpayPayment: React.FC = () => {
 
     const razorpay = new window.Razorpay(options);
     razorpay.open();
+
+    razorpay.on("payment.failed", function (response: RazorpayErrorEvent) {
+      console.error("❌ Payment Failed:", response.error);
+      alert(`Payment Failed: ${response.error.description}`);
+      onFailure?.(response); // Optional failure handler
+    });
   };
 
   return (
-    <div>
-      <button onClick={handlePayment} className="bg-blue-600 text-white py-2 px-4 rounded">
-        Pay Now
-      </button>
-    </div>
+    <button
+      onClick={handlePayment}
+      className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
+    >
+      Pay Now ₹{(amount / 100).toFixed(2)}
+    </button>
   );
 };
 

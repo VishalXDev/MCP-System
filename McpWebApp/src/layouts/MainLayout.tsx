@@ -1,12 +1,14 @@
+// src/layouts/MainLayout.tsx
 import { ReactNode } from "react";
-import Sidebar from "../layouts/Sidebar";
+import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 
 interface LayoutProps {
   children: ReactNode;
+  className?: string;
 }
 
-const MainLayout: React.FC<LayoutProps> = ({ children }) => {
+const MainLayout: React.FC<LayoutProps> = ({ children, className }) => {
   return (
     <div className="flex h-screen bg-gray-950 text-white">
       {/* ✅ Sidebar - Hidden on small screens */}
@@ -17,7 +19,9 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
       {/* ✅ Main Content Area */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">{children}</main>
+        <main className={`flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 ${className ?? ""}`}>
+          {children}
+        </main>
       </div>
     </div>
   );

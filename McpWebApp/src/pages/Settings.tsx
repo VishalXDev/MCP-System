@@ -14,12 +14,14 @@ const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
+  // Listen for auth state and fetch user settings
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
+        setUser(currentUser);
         await fetchSettings(currentUser.uid);
       } else {
+        setUser(null);
         setLoading(false);
       }
     });
@@ -60,7 +62,10 @@ const Settings = () => {
       await setDoc(
         userRef,
         {
-          preferences: { theme, notifications },
+          preferences: {
+            theme,
+            notifications,
+          },
         },
         { merge: true }
       );

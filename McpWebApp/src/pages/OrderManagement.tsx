@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import API from "../utils/axios.ts";
+import API from "../utils/axios";
 
 // Types
 type OrderStatus = "pending" | "assigned" | "picked" | "delivered";

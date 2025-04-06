@@ -14,15 +14,14 @@ interface User {
 const RoleManagement = () => {
   const { user } = useAuth(); // Admin user
   const [users, setUsers] = useState<User[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<{ [key: string]: User["role"] }>({});
   const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/users`
-        );
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users`);
         if (!response.ok) throw new Error("Failed to fetch users");
         const data: User[] = await response.json();
         setUsers(data.map((u) => ({ ...u, originalRole: u.role })));
@@ -34,10 +33,7 @@ const RoleManagement = () => {
     fetchUsers();
   }, []);
 
-  const handleRoleChange = async (
-    userId: string,
-    newRole: "staff" | "manager" | "admin"
-  ) => {
+  const handleRoleChange = async (userId: string, newRole: User["role"]) => {
     if (!user) {
       setError("Unauthorized: Admin login required");
       return;
@@ -49,11 +45,14 @@ const RoleManagement = () => {
     try {
       await updateUserRole(user.uid, userId, newRole);
       setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId ? { ...u, role: newRole } : u
-        )
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole, originalRole: newRole } : u))
       );
       toast.success("Role updated successfully!");
+      setSelectedRoles((prev) => {
+        const updated = { ...prev };
+        delete updated[userId];
+        return updated;
+      });
     } catch (err) {
       console.error("Error updating role:", err);
       setError("Failed to update role");
@@ -68,9 +67,7 @@ const RoleManagement = () => {
       <h1 className="text-2xl font-bold">Role Management</h1>
 
       {error && (
-        <div className="bg-red-100 text-red-700 px-4 py-2 rounded">
-          {error}
-        </div>
+        <div className="bg-red-100 text-red-700 px-4 py-2 rounded">{error}</div>
       )}
 
       <div className="overflow-x-auto bg-white rounded shadow">
@@ -85,46 +82,54 @@ const RoleManagement = () => {
           </thead>
           <tbody>
             {users.length > 0 ? (
-              users.map((u) => (
-                <tr key={u.id} className="border-t hover:bg-gray-50">
-                  <td className="p-3">{u.name}</td>
-                  <td className="p-3">{u.email}</td>
-                  <td className="p-3">
-                    <select
-                      value={u.role}
-                      onChange={(e) =>
-                        handleRoleChange(
-                          u.id,
-                          e.target.value as User["role"]
-                        )
-                      }
-                      disabled={loading[u.id] || user?.uid === u.id}
-                      className="p-2 bg-gray-100 border rounded"
-                    >
-                      <option value="staff">Staff</option>
-                      <option value="manager">Manager</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </td>
-                  <td className="p-3">
-                    <button
-                      onClick={() => handleRoleChange(u.id, u.role)}
-                      disabled={
-                        loading[u.id] ||
-                        u.role === u.originalRole ||
-                        user?.uid === u.id
-                      }
-                      className={`px-4 py-1 text-sm rounded text-white transition ${
-                        loading[u.id]
-                          ? "bg-gray-400 cursor-not-allowed"
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                    >
-                      {loading[u.id] ? "Updating..." : "Update Role"}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              users.map((u) => {
+                const selectedRole = selectedRoles[u.id] ?? u.role;
+                return (
+                  <tr key={u.id} className="border-t hover:bg-gray-50">
+                    <td className="p-3">{u.name}</td>
+                    <td className="p-3">{u.email}</td>
+                    <td className="p-3">
+                      <select
+                        value={selectedRole}
+                        onChange={(e) =>
+                          setSelectedRoles((prev) => ({
+                            ...prev,
+                            [u.id]: e.target.value as User["role"],
+                          }))
+                        }
+                        disabled={loading[u.id] || user?.uid === u.id}
+                        className="p-2 bg-gray-100 border rounded capitalize"
+                      >
+                        <option value="staff">Staff</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      {user?.uid === u.id && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          You can't change your own role
+                        </p>
+                      )}
+                    </td>
+                    <td className="p-3">
+                      <button
+                        onClick={() => handleRoleChange(u.id, selectedRole)}
+                        disabled={
+                          loading[u.id] ||
+                          selectedRole === u.originalRole ||
+                          user?.uid === u.id
+                        }
+                        className={`px-4 py-1 text-sm rounded text-white transition ${
+                          loading[u.id]
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700"
+                        }`}
+                      >
+                        {loading[u.id] ? "Updating..." : "Update Role"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={4} className="p-4 text-center text-gray-500">
