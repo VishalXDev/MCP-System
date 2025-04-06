@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-// ✅ Define a separate schema for transactions
+// ✅ Reusable embedded transaction schema
 const transactionSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   type: { type: String, enum: ["credit", "debit"], required: true },
@@ -8,22 +8,37 @@ const transactionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-// ✅ Define the PickupPartner schema
+// ✅ Pickup Partner schema
 const pickupPartnerSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phone: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    assignedOrders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }], // Orders assigned
-    walletBalance: { type: Number, default: 0 }, // Wallet balance in INR
-    role: { type: String, default: "PickupPartner" }, // Fixed role
-    transactions: [transactionSchema], // Use the transaction schema
+
+    profilePicture: { type: String, default: "" }, // Optional profile picture
+
+    isActive: { type: Boolean, default: true }, // Used for soft deactivation
+    isVerified: { type: Boolean, default: false }, // For KYC-type checks
+
+    assignedOrders: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
+    ],
+
+    walletBalance: { type: Number, default: 0 },
+    transactions: [transactionSchema],
+
+    role: { type: String, default: "PickupPartner" }, // Fixed role for auth check
+
+    lastKnownLocation: {
+      lat: { type: Number },
+      lng: { type: Number },
+      updatedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );
 
-// ✅ Create the model
 const PickupPartner = mongoose.model("PickupPartner", pickupPartnerSchema);
 
 export default PickupPartner;

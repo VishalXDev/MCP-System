@@ -22,3 +22,4 @@ export const protectSocket = (socket, next) => {
     return next(new Error("Unauthorized: Invalid token"));
   }
 };
+io.use(protectSocket);

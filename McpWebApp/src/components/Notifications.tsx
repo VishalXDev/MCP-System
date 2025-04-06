@@ -1,11 +1,6 @@
+// src/components/Notifications.tsx
 import React, { useState, useEffect, useRef } from "react";
-import { io } from "socket.io-client";
-
-// ✅ Replace with your actual backend URL
-const socket = io("https://your-backend-url.com", {
-  transports: ["websocket"], // optional: forces WebSocket
-  withCredentials: true,
-});
+import socket from "../socket";
 
 interface NotificationProps {
   id: number;
@@ -33,8 +28,9 @@ const NotificationItem: React.FC<NotificationProps> = ({
 
   return (
     <div
-      className={`fixed right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-transform duration-300
-        ${type === "success" ? "bg-green-500" : "bg-red-500"}`}
+      className={`fixed right-5 p-4 rounded-lg shadow-lg text-white text-sm transition-transform duration-300 ${
+        type === "success" ? "bg-green-500" : "bg-red-500"
+      }`}
       style={{ top: `${index * 70 + 20}px` }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -53,6 +49,10 @@ const Notifications: React.FC = () => {
   >([]);
 
   useEffect(() => {
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     const handleNotification = (data: { message: string; type: "success" | "error" }) => {
       setNotifications((prev) => [
         ...prev,

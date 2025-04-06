@@ -9,16 +9,16 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Get all users
+// 📌 Get all users (Admins/MCPs)
 router.get("/", protect, getAllUsers);
 
-// Add new partner
+// 📌 Add a new pickup partner
 router.post("/partner", protect, addPartner);
 
-// Update user
+// 📌 Update user details by ID
 router.put("/:id", protect, updateUser);
 
-// Delete user
+// 📌 Delete user by ID
 router.delete("/:id", protect, deleteUser);
 
 export default router;

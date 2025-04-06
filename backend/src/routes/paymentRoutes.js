@@ -2,20 +2,19 @@ import express from "express";
 import {
   createOrder,
   razorpayWebhookHandler,
-  verifyPayment, // ✅ Only import once
-} from "../controllers/paymentController.js"; // ✅ Import Fix
+  verifyPayment,
+} from "../controllers/paymentController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import razorpay from "../config/razorpay.js";
 
 const router = express.Router();
 
-// Create Razorpay order
+// 📌 Create a Razorpay payment order
 router.post("/create-order", protect, createOrder);
 
-// Verify payment and update wallet
+// 📌 Verify Razorpay payment (after frontend checkout success)
 router.post("/verify-payment", protect, verifyPayment);
 
-// Razorpay webhook (ensure webhook secret verification inside controller)
-router.post("/razorpay-webhook", razorpayWebhookHandler);
+// 📌 Razorpay Webhook Listener (DO NOT protect this route)
+router.post("/razorpay-webhook", express.raw({ type: "application/json" }), razorpayWebhookHandler);
 
 export default router;

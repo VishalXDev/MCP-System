@@ -15,17 +15,22 @@ const cacheMiddleware = async (req, res, next) => {
 
     console.log(`🚫 Cache miss for ${cacheKey}`);
 
-    // Intercept the response to cache it after sending
+    // Intercept res.json to store the response in Redis
     const originalJson = res.json.bind(res);
-    res.json = (body) => {
-      redis.setex(cacheKey, 300, JSON.stringify(body)); // Cache for 5 minutes
+    res.json = async (body) => {
+      try {
+        await redis.set(cacheKey, JSON.stringify(body), 'EX', 300); // Cache for 5 minutes
+        console.log(`📦 Cached response for ${cacheKey}`);
+      } catch (err) {
+        console.error("⚠️ Redis set error:", err.message);
+      }
       return originalJson(body);
     };
 
     next();
   } catch (error) {
-    console.error("Redis cache error:", error.message);
-    next(); // Continue without caching if Redis fails
+    console.error("❌ Redis cache middleware error:", error.message);
+    next(); // Proceed without caching
   }
 };
 

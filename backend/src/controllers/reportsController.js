@@ -1,18 +1,24 @@
 import Order from "../models/Order.js";
 import PickupPartner from "../models/PickupPartner.js";
 
-// 📌 Generate Reports & Analytics
+// 📌 Generate Reports & Analytics (Admin Panel)
 export const getReports = async (req, res) => {
   try {
-    const totalOrders = await Order.countDocuments();
-    const completedOrders = await Order.countDocuments({ status: "Completed" });
-    const pendingOrders = await Order.countDocuments({ status: "Pending" });
-    const failedOrders = await Order.countDocuments({ status: "Failed" });
-
-    const totalEarnings = await Order.aggregate([
-      { $group: { _id: null, total: { $sum: "$earnings" } } },
+    // 🔹 Order Stats
+    const [totalOrders, completedOrders, pendingOrders, failedOrders] = await Promise.all([
+      Order.countDocuments(),
+      Order.countDocuments({ status: "Completed" }),
+      Order.countDocuments({ status: "Pending" }),
+      Order.countDocuments({ status: "Failed" }),
     ]);
 
+    // 🔹 Total Earnings
+    const earningsAgg = await Order.aggregate([
+      { $group: { _id: null, totalEarnings: { $sum: "$earnings" } } },
+    ]);
+    const totalEarnings = earningsAgg.length > 0 ? earningsAgg[0].totalEarnings : 0;
+
+    // 🔹 Partner Performance
     const partnerPerformance = await PickupPartner.aggregate([
       {
         $lookup: {
@@ -40,16 +46,22 @@ export const getReports = async (req, res) => {
       },
     ]);
 
+    // ✅ Response
     res.status(200).json({
-      totalOrders,
-      completedOrders,
-      pendingOrders,
-      failedOrders,
-      totalEarnings: totalEarnings[0]?.total || 0,
+      stats: {
+        totalOrders,
+        completedOrders,
+        pendingOrders,
+        failedOrders,
+        totalEarnings,
+      },
       partnerPerformance,
     });
   } catch (error) {
-    console.error("Error generating reports:", error);
-    res.status(500).json({ message: "Error generating reports", error: error.message });
+    console.error("❌ Error generating reports:", error);
+    res.status(500).json({
+      message: "Failed to generate reports",
+      error: error.message,
+    });
   }
 };

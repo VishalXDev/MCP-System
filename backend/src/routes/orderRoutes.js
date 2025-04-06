@@ -8,6 +8,7 @@ import {
   getOrders,
   assignOrder,
   updateStatus,
+  getOrderStats
 } from "../controllers/orderController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
@@ -27,8 +28,11 @@ router.post(
   createOrder
 );
 
-// 📌 Update order status
+// 📌 Update order status (generic)
 router.put("/update-status", protect, updateOrderStatus);
+
+// 📌 Get all orders
+router.get("/", protect, getOrders);
 
 // 📌 Get order details
 router.get("/:orderId", protect, getOrderDetails);
@@ -36,16 +40,13 @@ router.get("/:orderId", protect, getOrderDetails);
 // 📌 Track order
 router.get("/track/:orderId", protect, trackOrder);
 
-// 📌 Get all orders
-router.get("/", protect, getOrders);
-
-// 📌 Assign order to partner
+// 📌 Assign order to pickup partner
 router.put("/:id/assign", protect, assignOrder);
 
 // 📌 Update order status (by ID)
 router.put("/:id/status", protect, updateStatus);
 
-// 📌 Update order location
+// 📌 Update live location
 router.put("/updateLocation/:orderId", protect, async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
@@ -88,7 +89,8 @@ router.put("/updateLocation/:orderId", protect, async (req, res) => {
     });
   }
 });
-import { getOrderStats } from "../controllers/orderController.js";
-router.get("/stats", getOrderStats);
+
+// 📌 Get order statistics
+router.get("/stats", protect, getOrderStats);
 
 export default router;

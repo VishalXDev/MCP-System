@@ -3,48 +3,52 @@ import User from "../models/user.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
-// 📌 Middleware to verify JWT token
+// 🔐 Middleware to protect routes using JWT
 export const protect = async (req, res, next) => {
   const token = req.header("Authorization")?.replace("Bearer ", "");
-
-  if (!token) {
-    return res.status(401).json({ message: "Access Denied. No token provided." });
-  }
+  if (!token)
+    return res
+      .status(401)
+      .json({ message: "Access denied. No token provided." });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
+    const user = await User.findById(decoded.id).select("-password");
 
-    if (!req.user) {
-      return res.status(401).json({ message: "User not found" });
-    }
+    if (!user) return res.status(401).json({ message: "User not found" });
 
+    req.user = user;
     next();
   } catch (error) {
-    res.status(403).json({ message: "Invalid token" });
+    res.status(403).json({ message: "Invalid or expired token" });
   }
 };
 
-// 📌 Middleware to check if user is MCP
+// 🎯 Role-based middleware: Only for Admins (MCP)
 export const isMCP = (req, res, next) => {
-  if (!req.user || req.user.role !== "MCP") {
-    return res.status(403).json({ message: "Access denied. MCP role required." });
+  if (req.user?.role !== "MCP") {
+    return res
+      .status(403)
+      .json({ message: "Access denied. MCP role required." });
   }
   next();
 };
 
-// 📌 Middleware to check if user is Pickup Partner
+// 🎯 Role-based middleware: Only for Pickup Partners
 export const isPickupPartner = (req, res, next) => {
-  if (!req.user || req.user.role !== "PickupPartner") {
-    return res.status(403).json({ message: "Access denied. Pickup Partner role required." });
+  if (req.user?.role !== "PickupPartner") {
+    return res
+      .status(403)
+      .json({ message: "Access denied. Pickup Partner role required." });
   }
   next();
 };
 
-// ✅ Optional: If you want a generic token check middleware as well
+// 🧪 Optional basic token-only middleware (no DB lookup)
 export const verifyToken = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token) return res.status(401).json({ error: "Access denied" });
+  if (!token)
+    return res.status(401).json({ error: "Access denied. No token." });
 
   try {
     const verified = jwt.verify(token, JWT_SECRET);

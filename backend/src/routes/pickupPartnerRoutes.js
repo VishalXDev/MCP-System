@@ -1,20 +1,25 @@
 import express from "express";
 import { protect, isPickupPartner } from "../middleware/authMiddleware.js";
-import { updateOrderStatus, getWalletDetails } from "../controllers/pickupPartnerController.js";
+import {
+  updateOrderStatus,
+  getWalletDetails,
+  getPartnerPerformance
+} from "../controllers/pickupPartnerController.js";
 
 const router = express.Router();
 
-// Example Pickup Partner Route: Accept Order
+// 📌 Accept Order (Sample Placeholder Endpoint)
 router.post("/accept-order", protect, isPickupPartner, (req, res) => {
   res.json({ message: "Order accepted!" });
 });
 
-// Pickup Partner Order Updates
+// 📌 Update Order Status
 router.put("/update-order/:orderId", protect, isPickupPartner, updateOrderStatus);
 
-// Wallet Details
+// 📌 Wallet Details
 router.get("/wallet", protect, isPickupPartner, getWalletDetails);
-import { getPartnerPerformance } from "../controllers/pickupPartnerController.js";
-router.get("/performance", getPartnerPerformance);
+
+// 📌 Partner Performance Analytics
+router.get("/performance", protect, isPickupPartner, getPartnerPerformance);
 
 export default router;

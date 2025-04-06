@@ -4,7 +4,7 @@ import PickupPartner from "../models/PickupPartner.js";
 import User from "../models/user.js";
 import Transaction from "../models/Transaction.js";
 import { getSocketIO } from "../socket.io/index.js";
-import razorpayInstance from "../config/razorpay.js"; // Ensure this file exports a configured Razorpay instance
+import razorpayInstance from "../config/razorpay.js";
 
 // 📌 Add Funds to Wallet (Admin manually adds to Pickup Partner)
 export const addFundsToWallet = async (req, res) => {
@@ -26,8 +26,17 @@ export const addFundsToWallet = async (req, res) => {
 
     await partner.save();
 
+    // 💾 Log transaction to DB
+    await Transaction.create({
+      userId: partnerId,
+      amount,
+      type: "credit",
+      description: "Funds added by MCP",
+      status: "Paid",
+    });
+
     // 🔔 Emit real-time notification
-    getSocketIO().to(partnerId).emit("walletUpdated", {
+    getSocketIO().to(`partner_${partnerId}`).emit("walletUpdated", {
       message: `Your wallet has been credited with ₹${amount}`,
       balance: partner.walletBalance,
     });
@@ -76,6 +85,16 @@ export const verifyPayment = async (req, res) => {
 
     await user.save();
 
+    // 💾 Log transaction
+    await Transaction.create({
+      userId,
+      amount,
+      type: "credit",
+      description: "Wallet top-up via Razorpay",
+      razorpayOrderId: razorpay_order_id,
+      status: "Paid",
+    });
+
     res.json({
       message: "Payment successful, wallet updated",
       walletBalance: user.walletBalance,
@@ -89,6 +108,19 @@ export const verifyPayment = async (req, res) => {
 // 📌 Razorpay Webhook for Payment Capture
 export const razorpayWebhookHandler = async (req, res) => {
   try {
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers["x-razorpay-signature"];
+
+    const body = JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(body)
+      .digest("hex");
+
+    if (signature !== expectedSignature) {
+      return res.status(400).json({ message: "Invalid webhook signature" });
+    }
+
     const { event, payload } = req.body;
 
     if (event === "payment.captured") {
@@ -97,11 +129,15 @@ export const razorpayWebhookHandler = async (req, res) => {
       const order = await Transaction.findOne({ razorpayOrderId: order_id });
       if (!order) return res.status(404).json({ message: "Order not found" });
 
+      if (order.status === "Paid") {
+        return res.status(200).send("Already processed");
+      }
+
       order.status = "Paid";
       await order.save();
 
       getSocketIO()
-        .to(order.userId)
+        .to(`user_${order.userId}`)
         .emit("paymentCaptured", {
           message: `Your payment for order #${order_id} was successfully captured.`,
           orderId: order._id,
@@ -109,6 +145,8 @@ export const razorpayWebhookHandler = async (req, res) => {
         });
 
       res.status(200).send("Webhook received");
+    } else {
+      res.status(200).send("Unhandled event");
     }
   } catch (error) {
     console.error("Error in razorpayWebhookHandler:", error);

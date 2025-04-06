@@ -1,34 +1,50 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import bcrypt from "bcrypt";
 import User from "../src/models/user.js";
 
-dotenv.config();
+// Get __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// ✅ Load .env from backend root
+dotenv.config({ path: path.join(__dirname, "../.env") });
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log("MongoDB connected");
-  createAdmin();
-}).catch(err => {
-  console.error("MongoDB connection error:", err);
-});
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("📦 MongoDB connected");
+    createAdmin();
+  })
+  .catch((err) => {
+    console.error("❌ MongoDB connection error:", err.message);
+    process.exit(1);
+  });
 
+// Create Admin User
 async function createAdmin() {
   try {
-    const existing = await User.findOne({ email: "admin@mcp.com" });
-    if (existing) {
-      console.log("Admin already exists");
+    const email = "admin@mcp.com";
+    const password = "admin123";
+
+    const existingAdmin = await User.findOne({ email });
+
+    if (existingAdmin) {
+      console.log("⚠️ Admin already exists");
       process.exit(0);
     }
 
-    const hashedPassword = await bcrypt.hash("admin123", 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const adminUser = new User({
       name: "Super Admin",
-      email: "admin@mcp.com",
+      email,
       phone: "9999999999",
       password: hashedPassword,
       role: "admin",
@@ -38,7 +54,7 @@ async function createAdmin() {
     console.log("✅ Admin created successfully");
     process.exit(0);
   } catch (err) {
-    console.error("❌ Error creating admin:", err);
+    console.error("❌ Error creating admin:", err.message);
     process.exit(1);
   }
 }

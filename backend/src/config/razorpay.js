@@ -1,13 +1,11 @@
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
 
-// Load environment variables
-dotenv.config();
+dotenv.config(); // Load environment variables
 
-// Initialize Razorpay with the provided credentials from .env
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,    // Your Razorpay key_id
-  key_secret: process.env.RAZORPAY_KEY_SECRET,  // Your Razorpay key_secret
+  key_id: process.env.RAZORPAY_KEY_ID,         // ✅ Should exist in .env
+  key_secret: process.env.RAZORPAY_KEY_SECRET, // ✅ Should exist in .env
 });
 
 export default razorpay;

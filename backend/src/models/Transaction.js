@@ -5,25 +5,25 @@ const transactionSchema = new mongoose.Schema(
     sender: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User",
-      required: function() { return this.type === "Debit"; } 
+      required: function () { return this.type === "Debit"; } 
     },
     receiver: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User",
-      required: function() { return this.type === "Credit"; }
+      required: function () { return this.type === "Credit"; }
     },
     userId: { 
       type: mongoose.Schema.Types.ObjectId, 
       ref: "User" 
-    }, // Simplified alternative
+    }, // Simplified reference for the affected user
     amount: { 
       type: Number, 
       required: true,
-      min: 0.01 // Ensure positive amount
+      min: 0.01 
     },
     type: { 
       type: String, 
-      enum: ["Credit", "Debit", "System"], // Added system type
+      enum: ["Credit", "Debit", "System"], 
       required: true 
     },
     description: { 
@@ -34,29 +34,43 @@ const transactionSchema = new mongoose.Schema(
         "Commission",
         "Penalty",
         "System Adjustment"
-      ] 
+      ],
+      default: "System Adjustment"
     },
     relatedOrder: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order"
+    },
+    status: {
+      type: String,
+      enum: ["pending", "completed", "failed"],
+      default: "completed"
     }
   },
   { 
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true } 
+    toObject: { virtuals: true }
   }
 );
 
-// Add indexes for better query performance
+// 📌 Indexes for faster queries
 transactionSchema.index({ sender: 1 });
 transactionSchema.index({ receiver: 1 });
 transactionSchema.index({ userId: 1 });
 transactionSchema.index({ createdAt: -1 });
 
-// Virtual for formatted amount
-transactionSchema.virtual('formattedAmount').get(function() {
-  return `${this.type === 'Credit' ? '+' : '-'}${this.amount.toFixed(2)}`;
+// 📌 Virtual: formatted amount with +/-
+transactionSchema.virtual("formattedAmount").get(function () {
+  return `${this.type === "Credit" ? "+" : "-"}${this.amount.toFixed(2)}`;
+});
+
+// 📌 Virtual: direction of transaction
+transactionSchema.virtual("direction").get(function () {
+  if (this.sender && this.receiver) return "transfer";
+  if (this.sender) return "debit";
+  if (this.receiver) return "credit";
+  return "system";
 });
 
 const Transaction = mongoose.model("Transaction", transactionSchema);
