@@ -41,22 +41,23 @@ export const addPartner = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const partner = await User.create({
+    const newPartner = new User({
       name,
       email,
       phone,
       password: hashedPassword,
       role: "pickupPartner",
-      commissionRate: commissionRate ?? 0.2, // default to 20%
+      commissionRate: commissionRate ?? 0.2,
     });
 
-    const partnerResponse = partner.toObject();
-    delete partnerResponse.password;
+    await newPartner.save();
+
+    const { password: _, ...partnerData } = newPartner.toObject();
 
     res.status(201).json({
       success: true,
       message: "Pickup partner created successfully",
-      data: partnerResponse,
+      data: partnerData,
     });
   } catch (error) {
     if (error.name === "ValidationError") {
@@ -89,10 +90,10 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    const requesterIsAdmin = req.user.role === "admin";
-    const requesterIsSelf = req.user.id === id;
+    const isAdmin = req.user.role === "admin";
+    const isSelf = req.user.id === id;
 
-    if (!requesterIsAdmin && !requesterIsSelf) {
+    if (!isAdmin && !isSelf) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to update this user",
@@ -100,6 +101,7 @@ export const updateUser = async (req, res) => {
     }
 
     const updates = {};
+
     if (name) updates.name = name;
 
     if (email && email !== user.email) {
@@ -124,7 +126,7 @@ export const updateUser = async (req, res) => {
       updates.phone = phone;
     }
 
-    if (commissionRate !== undefined && requesterIsAdmin) {
+    if (commissionRate !== undefined && isAdmin) {
       updates.commissionRate = commissionRate;
     }
 
