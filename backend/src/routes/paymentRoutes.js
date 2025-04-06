@@ -1,10 +1,11 @@
 import express from "express";
-import { 
-  createOrder, 
-  razorpayWebhookHandler, 
-  verifyPayment 
+import {
+  createOrder,
+  razorpayWebhookHandler,
+  verifyPayment, // ✅ Only import once
 } from "../controllers/paymentController.js"; // ✅ Import Fix
 import { protect } from "../middleware/authMiddleware.js";
+import razorpay from "../config/razorpay.js";
 
 const router = express.Router();
 
