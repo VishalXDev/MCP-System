@@ -8,6 +8,7 @@ interface AuthContextType {
   role: string;
   loading: boolean;
   setRole: (role: string) => void;
+  uid: string | null; // Added UID to context
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,7 +40,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
-  const contextValue = useMemo(() => ({ user, role, loading, setRole }), [user, role, loading]);
+  const contextValue = useMemo(() => ({
+    user,
+    role,
+    loading,
+    setRole,
+    uid: user?.uid ?? null, // Exposing the UID here
+  }), [user, role, loading]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
