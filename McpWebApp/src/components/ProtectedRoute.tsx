@@ -1,6 +1,6 @@
-import { ReactNode, ReactElement } from "react";
+import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth"; // ✅ Correct import path
 
 interface ProtectedRouteProps {
   allowedRoles?: string[];
@@ -12,7 +12,7 @@ const ProtectedRoute = ({
   allowedRoles,
   children,
   fallbackUI,
-}: ProtectedRouteProps): ReactElement => {
+}: ProtectedRouteProps): ReactNode => {
   const { user, role, loading } = useAuth();
   const location = useLocation();
 
@@ -26,14 +26,16 @@ const ProtectedRoute = ({
 
   if (!user) {
     console.warn("🚫 Redirect: User not authenticated");
-    return <Navigate to="/signup" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (allowedRoles && (!role || !allowedRoles.includes(role))) {
-    console.warn(
-      `🚫 Access denied: "${role}" not in [${allowedRoles.join(", ")}]`
+    console.warn(`🚫 Access denied: "${role}" not in [${allowedRoles.join(", ")}]`);
+    return fallbackUI ? (
+      <>{fallbackUI}</>
+    ) : (
+      <Navigate to="/unauthorized" replace />
     );
-    return fallbackUI ? <>{fallbackUI}</> : <Navigate to="/unauthorized" replace />;
   }
 
   return <>{children}</>;

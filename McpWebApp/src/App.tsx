@@ -1,30 +1,34 @@
-// src/App.tsx
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-// Utils & Context
-import { AuthProvider, useAuth } from "./context/AuthContext";
+// Context & Hooks
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/useAuth";
+
+// Utils
 import socket, { connectSocket } from "./utils/socket";
 
-// Pages
-import Signup from "./pages/Signup";
-import Dashboard from "./pages/Dashboard";
+// Public Pages
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import NotFound from "./pages/NotFound";
+
+// Protected Pages
+import Dashboard from "./pages/Dashboard";
+import Settings from "./components/Settings";
+import WalletPage from "./pages/Wallet";
+import ReportsPage from "./pages/Reports";
 import UserManagement from "./pages/UserManagement";
 import OrderManagement from "./pages/OrderManagement";
 import OrderDetails from "./pages/OrderDetails";
-import WalletPage from "./pages/Wallet";
-import ReportsPage from "./pages/Reports";
-import NotFound from "./pages/NotFound";
+import OrderTracking from "./components/OrderTracking";
+import AdminDashboard from "./components/AdminControls";
+import Notifications from "./components/Notifications";
 
 // Components
-import AdminDashboard from "./components/AdminControls";
-import Settings from "./components/Settings";
-import OrderTracking from "./components/OrderTracking";
 import ProtectedRoute from "./components/ProtectedRoute";
-import Notifications from "./components/Notifications";
 
 // Styles
 import "./App.css";
@@ -70,15 +74,16 @@ function InnerApp() {
       <Notifications />
 
       <Routes>
-        {/* Public */}
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/" element={<Navigate to="/dashboard" />} />
 
-        {/* Protected */}
+        {/* Protected Routes */}
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
               <Dashboard />
             </ProtectedRoute>
           }
@@ -86,7 +91,7 @@ function InnerApp() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
               <Settings />
             </ProtectedRoute>
           }
@@ -94,7 +99,7 @@ function InnerApp() {
         <Route
           path="/order-tracking"
           element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
               <OrderTracking />
             </ProtectedRoute>
           }
@@ -102,7 +107,7 @@ function InnerApp() {
         <Route
           path="/order/:orderId"
           element={
-            <ProtectedRoute allowedRoles={["user", "admin"]}>
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
               <OrderDetails />
             </ProtectedRoute>
           }
@@ -120,14 +125,6 @@ function InnerApp() {
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <ReportsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/notifications"
-          element={
-            <ProtectedRoute allowedRoles={["admin", "user"]}>
-              <Notifications />
             </ProtectedRoute>
           }
         />
@@ -155,8 +152,16 @@ function InnerApp() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "user"]}>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Unauthorized fallback */}
+        {/* Unauthorized & Fallback */}
         <Route
           path="/unauthorized"
           element={
@@ -165,8 +170,6 @@ function InnerApp() {
             </div>
           }
         />
-        <Route path="/login" element={<Login />} />
-        {/* Catch all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

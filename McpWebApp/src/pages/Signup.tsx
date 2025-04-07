@@ -39,8 +39,16 @@ const Signup = () => {
       });
 
       navigate("/login");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        if (err.message.includes("auth/email-already-in-use")) {
+          setError("🚫 This email is already registered. Please log in instead.");
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError("An unexpected error occurred.");
+      }
     } finally {
       setLoading(false);
     }
@@ -51,7 +59,17 @@ const Signup = () => {
       <h2 className="text-2xl font-bold text-center mb-6">Create an Account</h2>
 
       {error && (
-        <p className="text-red-500 text-center mb-4">{error}</p>
+        <div className="text-red-500 text-center mb-4">
+          <p>{error}</p>
+          {error.includes("already registered") && (
+            <button
+              onClick={() => navigate("/login")}
+              className="mt-2 underline text-blue-400 hover:text-blue-600"
+            >
+              👉 Go to Login
+            </button>
+          )}
+        </div>
       )}
 
       <input
