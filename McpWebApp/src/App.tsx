@@ -11,6 +11,7 @@ import socket, { connectSocket } from "./utils/socket";
 // Pages
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 import UserManagement from "./pages/UserManagement";
 import OrderManagement from "./pages/OrderManagement";
 import OrderDetails from "./pages/OrderDetails";
@@ -164,7 +165,7 @@ function InnerApp() {
             </div>
           }
         />
-
+        <Route path="/login" element={<Login />} />
         {/* Catch all */}
         <Route path="*" element={<NotFound />} />
       </Routes>
