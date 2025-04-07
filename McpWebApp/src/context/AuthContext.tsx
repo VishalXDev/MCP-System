@@ -11,17 +11,20 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "../firebase/firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 
-// ✅ Interface for the context value using Firebase's User
+// ✅ Define role type
+type UserRole = "admin" | "partner" | "pickup-partner" | "user" | null;
+
+// ✅ Interface for context value
 interface AuthContextType {
   user: User | null;
-  role: "admin" | "partner" | "pickup-partner" | "user" | null;
+  role: UserRole;
   loading: boolean;
 }
 
 // ✅ Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ✅ Custom hook to access context
+// ✅ Hook to access auth context
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
@@ -30,15 +33,15 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
-// ✅ Props for provider
+// ✅ Provider props
 interface AuthProviderProps {
   children: ReactNode;
 }
 
-// ✅ AuthProvider implementation
+// ✅ AuthProvider component
 export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<AuthContextType["role"]>(null);
+  const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,7 +74,10 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
-  const contextValue = useMemo(() => ({ user, role, loading }), [user, role, loading]);
+  const contextValue = useMemo(
+    () => ({ user, role, loading }),
+    [user, role, loading]
+  );
 
   return (
     <AuthContext.Provider value={contextValue}>
@@ -79,3 +85,6 @@ export const AuthProvider: FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+// ✅ Optional export (for debugging or advanced usage)
+export { AuthContext };
