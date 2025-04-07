@@ -1,3 +1,4 @@
+// src/App.tsx
 import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
@@ -77,7 +78,18 @@ function InnerApp() {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+
+        {/* Redirect root based on role */}
+        <Route
+          path="/"
+          element={
+            user?.role === "admin" ? (
+              <Navigate to="/admin-dashboard" />
+            ) : (
+              <Navigate to="/dashboard" />
+            )
+          }
+        />
 
         {/* Protected Routes */}
         <Route
@@ -161,7 +173,7 @@ function InnerApp() {
           }
         />
 
-        {/* Unauthorized & Fallback */}
+        {/* Unauthorized & 404 */}
         <Route
           path="/unauthorized"
           element={

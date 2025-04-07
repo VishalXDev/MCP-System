@@ -1,40 +1,67 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useState, useEffect } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "../firebase";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth, db } from "../firebase/firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
 import axios from "axios";
 
-export interface AuthContextType {
-  user: User | null;
-  role: string | null;
+interface AuthUser {
+  uid: string;
+  email: string | null;
+  role: string;
+}
+
+interface AuthContextType {
+  user: AuthUser | null;
   loading: boolean;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined); // ✅ Exported here
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  loading: true,
+});
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<string | null>(null);
+export const useAuth = () => useContext(AuthContext);
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
         try {
-          const idToken = await currentUser.getIdToken();
-          const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/auth/role`, {
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-            },
+          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+          let role = "user";
+
+          if (userDoc.exists()) {
+            role = userDoc.data().role || "user";
+          } else {
+            const idToken = await firebaseUser.getIdToken();
+            const res = await axios.get(
+              `${import.meta.env.VITE_BACKEND_URL}/auth/role`,
+              {
+                headers: { Authorization: `Bearer ${idToken}` },
+              }
+            );
+            role = res.data.role || "user";
+          }
+
+          setUser({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role,
           });
-          setRole(res.data.role);
-        } catch (error) {
-          console.error("Failed to fetch role:", error);
+        } catch (err) {
+          console.error("Error getting user role:", err);
+          setUser(null);
         }
       } else {
-        setRole(null);
+        setUser(null);
       }
+
       setLoading(false);
     });
 
@@ -42,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
