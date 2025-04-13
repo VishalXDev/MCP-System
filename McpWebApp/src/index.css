@@ -1,0 +1,69 @@
+/* Tailwind Imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🌍 Global Styles */
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  @apply text-white bg-gray-900; /* Tailwind Dark Mode Base */
+}
+
+body {
+  @apply flex items-center justify-center min-h-screen min-w-[320px] m-0 px-4;
+  line-height: 1.6; /* Adjust for better readability */
+}
+
+/* 🔗 Links */
+a {
+  @apply font-medium text-blue-500 transition-colors duration-200;
+}
+a:hover {
+  @apply text-blue-400 underline;
+}
+
+a:focus {
+  @apply outline-none ring-2 ring-blue-500;
+}
+
+/* 🏷️ Headings */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-bold;
+}
+h1 {
+  @apply text-4xl leading-tight;
+}
+
+/* 🛠️ Buttons */
+button {
+  @apply rounded-lg border border-transparent px-4 py-2 text-lg font-medium transition-all duration-200 
+         bg-gray-800 text-white hover:border-blue-500 focus:outline-none focus:ring focus:ring-blue-500/50 active:scale-95;
+}
+
+button:focus-visible {
+  outline: 3px solid rgba(66, 153, 225, 0.6); /* A more visible outline for keyboard focus */
+}
+
+/* 🌗 Light Mode Support */
+@media (prefers-color-scheme: light) {
+  :root {
+    @apply text-gray-900 bg-white;
+  }
+
+  a:hover {
+    @apply text-indigo-500;
+  }
+
+  button {
+    @apply bg-gray-100 text-gray-900 hover:bg-gray-200;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-black;
+  }
+}
