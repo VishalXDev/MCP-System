@@ -1,3 +1,4 @@
 node_modules/
 .env
 redis.js
+firebaseConfig.js
